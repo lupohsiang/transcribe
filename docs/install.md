@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/lupohsiang/transcribe/main/install.
 The default is the latest published release. To select a release after downloading the install script:
 
 ```bash
-TRANSCRIBE_VERSION=v0.1.0 sh install-transcribe.sh
+TRANSCRIBE_VERSION=v0.1.1 sh install-transcribe.sh
 ```
 
 Repeat installation to upgrade, followed by `transcribe setup`. Archives are verified against the release's `SHA256SUMS` before extraction. This checks download integrity; it is not a separate publisher signature. Installs are kept under `~/.local/share/transcribe/releases/<archive-sha256>`, with a symlink at `~/.local/bin/transcribe`. Existing unrelated executables are preserved. Earlier releases remain available; keep them if you want to switch back. Model files and the model manifest are shared under `~/Library/Application Support/transcribe` by default.
@@ -45,7 +45,7 @@ Repeat installation to upgrade, followed by `transcribe setup`. Archives are ver
 
 | Variable | Purpose / 用途 |
 | --- | --- |
-| `TRANSCRIBE_VERSION` | Release tag, e.g. `v0.1.0` / 指定發行標籤 |
+| `TRANSCRIBE_VERSION` | Release tag, e.g. `v0.1.1` / 指定發行標籤 |
 | `TRANSCRIBE_INSTALL_ROOT` | Absolute release directory / 發行檔案的絕對路徑 |
 | `TRANSCRIBE_BIN_DIR` | Absolute command directory / 指令連結的絕對路徑 |
 | `TRANSCRIBE_HOME` | Model data and manifest directory / 模型資料與設定檔目錄 |
