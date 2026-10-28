@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { Context, Effect, Layer, Schema } from "effect";
 import { type AppError, AppFailure, appError } from "./errors";
 import { runProcess } from "./process";
+import { getRuntimeDirectory } from "./runtime";
 import { decodeTranscript, type Transcript } from "./transcript";
 
 const ModelSnapshotSchema = Schema.Struct({
@@ -101,7 +102,7 @@ async function runTranscription(request: TranscriptionRequest): Promise<Transcri
     throw appError("InputError", `audio file not found: ${request.inputPath}`);
   }
 
-  const projectRoot = resolve(import.meta.dir, "..");
+  const projectRoot = getRuntimeDirectory();
   const dataDirectory = getDataDirectory();
   const manifestPath = join(dataDirectory, "models.lock.json");
   const pythonPath = await getPythonPath(projectRoot);

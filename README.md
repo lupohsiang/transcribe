@@ -12,7 +12,21 @@ Preparation downloads dependencies and model files. Transcription uses local sna
 
 ## Getting started
 
-Requires an Apple Silicon Mac running macOS 14 or newer, Bun, uv, and FFmpeg. With Bun and Homebrew already installed, run these commands from this source directory:
+Requires an Apple Silicon Mac running macOS 14 or newer. Native releases include Bun; install uv and FFmpeg separately. Because this repository is private, use an authenticated GitHub CLI session:
+
+```bash
+brew install gh uv ffmpeg
+gh auth login
+gh api -H 'Accept: application/vnd.github.raw+json' repos/lupohsiang/transcribe/contents/install.sh > install-transcribe.sh && sh install-transcribe.sh
+export PATH="$HOME/.local/bin:$PATH"
+transcribe setup
+transcribe doctor
+transcribe run "$HOME/Downloads/新錄音 4.m4a" --format text --output transcript.txt
+```
+
+The installer verifies the archive's SHA-256 checksum and installs into `~/.local/share/transcribe/releases`, with a command symlink in `~/.local/bin`. Add the PATH line to your shell profile if needed. Run the installer again to upgrade, then run `transcribe setup` for the new release. The MLX Python environment and models are prepared separately by `setup`; they are not inside the binary. See [installation and releases](docs/install.md) for curl, version selection, and building native releases.
+
+To run from source instead, install Bun and run these commands from this source directory:
 
 ```bash
 brew install uv ffmpeg
@@ -59,8 +73,9 @@ bun install --frozen-lockfile
 bun run check
 bun run test
 bun run build
+bun run build:native
 ```
 
 Tests cover CLI behavior, FFmpeg conversion through a protocol fixture, schema validation, output protection, cancellation, and speaker interval partitioning. Real model inference is verified separately.
 
-The build produces `dist/cli.js`, which runs with Bun. Keep the source project, Python worker, model pins, and `.venv` together; the JavaScript bundle is not a standalone executable.
+`build` produces `dist/cli.js` for Bun. `build:native` produces an Apple Silicon executable, its Python support files, an install script, and checksums under `dist/release`. Ship the release archive together; moving only the executable leaves its worker files behind.

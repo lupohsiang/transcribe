@@ -1,5 +1,7 @@
 # Command-line guide
 
+Using a [native release](install.md)? Replace `bun src/cli.ts` in the examples below with `transcribe`. Bun is only needed when running from source.
+
 [Overview](../README.md) · [繁體中文](cli.zh-tw.md)
 
 Run commands from the source project directory. These examples use `bun src/cli.ts`. After `bun run build`, you can use `bun dist/cli.js` while keeping the rest of the project in place.

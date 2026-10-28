@@ -12,7 +12,21 @@ transcribe 是在 Apple Silicon Mac 上執行的本機命令列工具，可將�
 
 ## 開始使用
 
-需要搭載 Apple Silicon、執行 macOS 14 以上版本的 Mac，以及 Bun、uv 和 FFmpeg。安裝好 Bun 與 Homebrew 後，在此專案目錄執行：
+需要搭載 Apple Silicon、執行 macOS 14 以上版本的 Mac。原生執行檔已內含 Bun；另需安裝 uv 與 FFmpeg。此儲存庫為私人儲存庫，請先登入 GitHub CLI：
+
+```bash
+brew install gh uv ffmpeg
+gh auth login
+gh api -H 'Accept: application/vnd.github.raw+json' repos/lupohsiang/transcribe/contents/install.sh > install-transcribe.sh && sh install-transcribe.sh
+export PATH="$HOME/.local/bin:$PATH"
+transcribe setup
+transcribe doctor
+transcribe run "$HOME/Downloads/新錄音 4.m4a" --format text --output transcript.txt
+```
+
+安裝腳本會驗證 SHA-256 校驗碼，安裝至 `~/.local/share/transcribe/releases`，並在 `~/.local/bin` 建立指令連結。需要時請將 PATH 設定加入 shell 設定檔。再次執行安裝腳本即可升級，升級後請執行 `transcribe setup`。MLX Python 環境與模型由 `setup` 另外準備，不包含在執行檔內。curl、指定版本及原生建置方式請參閱[安裝與發行說明](docs/install.md)。
+
+若要從原始碼執行，請另外安裝 Bun，並在此專案目錄執行：
 
 ```bash
 brew install uv ffmpeg
@@ -59,8 +73,9 @@ bun install --frozen-lockfile
 bun run check
 bun run test
 bun run build
+bun run build:native
 ```
 
 測試涵蓋 CLI 行為、搭配協定測試替身的 FFmpeg 轉檔、資料結構驗證、輸出檔案保護、取消執行，以及說話者區間的切分。實際模型推論另行驗證。
 
-建置後會產生透過 Bun 執行的 `dist/cli.js`。請保留完整原始碼專案、Python worker、模型版本設定與 `.venv`；JavaScript 建置檔本身不是獨立執行檔。
+`build` 產生透過 Bun 執行的 `dist/cli.js`；`build:native` 在 `dist/release` 產生 Apple Silicon 原生執行檔、Python 支援檔、安裝腳本與校驗碼。請使用完整發行壓縮檔，單獨搬移執行檔會缺少 worker。

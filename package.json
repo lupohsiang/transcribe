@@ -7,10 +7,11 @@
     "transcribe": "./src/cli.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit && biome check src test",
+    "check": "tsc --noEmit && biome check src test scripts",
     "test": "bun test && python3 -m unittest discover -s python_tests -v",
     "start": "bun src/cli.ts",
-    "build": "bun build src/cli.ts --target=bun --outdir=dist"
+    "build": "bun build src/cli.ts --target=bun --outdir=dist",
+    "build:native": "bun scripts/build-release.ts"
   },
   "dependencies": {
     "commander": "14.0.0",

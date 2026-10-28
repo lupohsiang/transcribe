@@ -42,3 +42,11 @@ The canonical `recording.json`, `recording.txt`, and `recording.srt` exports now
 Conversion changed the text in 1,512 of 2,202 segments. Segment count, timestamps, speaker fields, source metadata, models, and warnings were compared and preserved. All 2,202 SRT cues remain present. No audio inference was repeated. The conversion configuration, backup hashes, and new output hashes are recorded in `artifacts/recording.zh-tw-conversion.json`. The pre-conversion execution record is preserved as `artifacts/execution-report.before-zh-tw.json`.
 
 Future CLI output defaults to `--chinese-script zh-TW` in every format; `--chinese-script original` preserves the ASR model's text. Tests now include mixed Chinese/English text, contextual character conversion, metadata preservation, the original-text option, and the real CLI projection. All 16 Bun tests, five Python tests, type checking, linting, and the updated build passed. This conversion does not improve recognition or speaker accuracy.
+
+## Native release packaging
+
+On 2026-10-28, built an Apple Silicon Mach-O executable with Bun 1.3.11 and installed the approximately 22 MB release archive through `install.sh`. Verified checksum failures preserve the existing installation, repeated installs and upgrades preserve earlier release directories, unrelated executables are not overwritten, and unexpected archive paths are rejected. Installer tests use paths containing spaces.
+
+Ran the installed command through its symlink from `/private/tmp`, with no Bun executable on PATH. Its own `setup` created a separate Python 3.13.5 environment with the frozen dependencies and reused the existing pinned model snapshots. A 15-second selection of the supplied recording produced four text segments from five diarized intervals, with the omitted interval reported as a warning. Chinese output was Traditional Chinese. The private transcript remains in ignored local artifacts.
+
+The release workflow runs checks and protocol tests on Linux and cross-compiles the Apple Silicon executable. MLX inference and native installation were verified locally; the workflow does not claim to run model inference on Linux.

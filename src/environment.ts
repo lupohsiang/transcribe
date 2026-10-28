@@ -1,8 +1,9 @@
 import { access, readFile, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { Schema } from "effect";
 import { appError } from "./errors";
 import { runProcess } from "./process";
+import { getRuntimeDirectory } from "./runtime";
 import { getDataDirectory } from "./transcriber";
 
 const ModelSnapshotSchema = Schema.Struct({
@@ -47,7 +48,7 @@ export async function loadModelState(): Promise<ModelState | undefined> {
 }
 
 export async function setupModels(signal: AbortSignal, quiet: boolean): Promise<void> {
-  const projectRoot = resolve(import.meta.dir, "..");
+  const projectRoot = getRuntimeDirectory();
   const uv = Bun.which("uv");
   if (uv === null) throw appError("DependencyError", "uv is required; install uv and retry", 69);
   const dataDirectory = getDataDirectory();
@@ -122,7 +123,7 @@ export async function inspectModels(): Promise<ReadonlyArray<Diagnostic>> {
 }
 
 export async function inspectEnvironment(): Promise<ReadonlyArray<Diagnostic>> {
-  const projectRoot = resolve(import.meta.dir, "..");
+  const projectRoot = getRuntimeDirectory();
   const diagnostics: Diagnostic[] = [
     { name: "Bun", ok: true, detail: Bun.version },
     {

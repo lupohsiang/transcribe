@@ -1,5 +1,7 @@
 # 命令列使用指南
 
+若使用[原生發行版本](install.md)，請將以下範例中的 `bun src/cli.ts` 換成 `transcribe`；只有從原始碼執行時才需要 Bun。
+
 [專案介紹](../README.zh-tw.md) · [English](cli.md)
 
 請在原始碼專案目錄中執行指令。以下範例使用 `bun src/cli.ts`；執行 `bun run build` 後，也能改用 `bun dist/cli.js`，但仍須保留完整專案。
