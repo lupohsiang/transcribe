@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "models": {
+    "asr": {
+      "id": "mlx-community/Qwen3-ASR-1.7B-8bit",
+      "revision": "a8379a2e2f9e313c9292cdf1af4055ab56d50d55"
+    },
+    "diarization": {
+      "id": "mlx-community/Nemotron-3-Diarization-8bit",
+      "revision": "dd8b8ce3d69a80540a7e50150e2beed1c34fee37"
+    }
+  }
+}
