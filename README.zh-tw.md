@@ -12,12 +12,11 @@ transcribe 是在 Apple Silicon Mac 上執行的本機命令列工具，可將�
 
 ## 開始使用
 
-需要搭載 Apple Silicon、執行 macOS 14 以上版本的 Mac。原生執行檔已內含 Bun；另需安裝 uv 與 FFmpeg。此儲存庫為私人儲存庫，請先登入 GitHub CLI：
+需要搭載 Apple Silicon、執行 macOS 14 以上版本的 Mac。原生執行檔已內含 Bun；另需安裝 uv 與 FFmpeg。不需要 GitHub 帳號，即可安裝最新發行版本：
 
 ```bash
-brew install gh uv ffmpeg
-gh auth login
-gh api -H 'Accept: application/vnd.github.raw+json' repos/lupohsiang/transcribe/contents/install.sh > install-transcribe.sh && sh install-transcribe.sh
+brew install uv ffmpeg
+curl -fsSL https://raw.githubusercontent.com/lupohsiang/transcribe/main/install.sh -o install-transcribe.sh && sh install-transcribe.sh
 export PATH="$HOME/.local/bin:$PATH"
 transcribe setup
 transcribe doctor

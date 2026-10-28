@@ -4,32 +4,21 @@ Native releases support Apple Silicon and macOS 14+. Bun is compiled into the CL
 
 原生版本支援 Apple Silicon 與 macOS 14 以上版本，不需要安裝 Bun 或下載原始碼。Python/MLX、FFmpeg 與模型仍為外部相依項目；請執行 `transcribe setup` 準備。
 
-## Private repository / 私人儲存庫
+## Install with curl / 使用 curl 安裝
 
-Install Homebrew's `gh`, `uv`, and `ffmpeg`, then authenticate with a GitHub account that can access this repository:
+This repository is public. Install the latest native release without a GitHub account or GitHub CLI:
 
 ```bash
-brew install gh uv ffmpeg
-gh auth login
-gh api -H 'Accept: application/vnd.github.raw+json' repos/lupohsiang/transcribe/contents/install.sh > install-transcribe.sh && sh install-transcribe.sh
+brew install uv ffmpeg
+curl -fsSL https://raw.githubusercontent.com/lupohsiang/transcribe/main/install.sh -o install-transcribe.sh && sh install-transcribe.sh
 export PATH="$HOME/.local/bin:$PATH"
 transcribe setup
 transcribe doctor
 ```
 
-The installer downloads private release assets through `gh release download`. [GitHub requires authentication for private release assets](https://docs.github.com/en/rest/releases/assets#get-a-release-asset). An anonymous curl command cannot download this private repository. Do not put access tokens into URLs.
+此儲存庫已公開，不需要 GitHub 帳號或 GitHub CLI。安裝腳本會下載最新發行版本並驗證校驗碼，之後請執行 `transcribe setup` 準備 Python 環境與模型。
 
-私人版本透過 `gh release download` 下載，需要有權限的 GitHub 帳號。匿名 curl 無法下載私人儲存庫；請勿將存取權杖放入網址。
-
-## Public curl command / 公開版本的 curl 指令
-
-If the repository is made public later, this command will work without GitHub authentication:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/lupohsiang/transcribe/main/install.sh -o install-transcribe.sh && sh install-transcribe.sh
-```
-
-目前仍為私人儲存庫，以上公開下載指令尚不適用。
+The installer uses an authenticated `gh` session if available and otherwise downloads the public release assets with curl.
 
 ## Versions and paths / 版本與路徑
 

@@ -12,12 +12,11 @@ Preparation downloads dependencies and model files. Transcription uses local sna
 
 ## Getting started
 
-Requires an Apple Silicon Mac running macOS 14 or newer. Native releases include Bun; install uv and FFmpeg separately. Because this repository is private, use an authenticated GitHub CLI session:
+Requires an Apple Silicon Mac running macOS 14 or newer. Native releases include Bun; install uv and FFmpeg separately. Install the latest release without a GitHub account:
 
 ```bash
-brew install gh uv ffmpeg
-gh auth login
-gh api -H 'Accept: application/vnd.github.raw+json' repos/lupohsiang/transcribe/contents/install.sh > install-transcribe.sh && sh install-transcribe.sh
+brew install uv ffmpeg
+curl -fsSL https://raw.githubusercontent.com/lupohsiang/transcribe/main/install.sh -o install-transcribe.sh && sh install-transcribe.sh
 export PATH="$HOME/.local/bin:$PATH"
 transcribe setup
 transcribe doctor
