@@ -34,7 +34,7 @@ Supply a language hint when needed:
 bun src/cli.ts run "recording.m4a" --language Chinese --format text
 ```
 
-Without a hint, the ASR model detects the language. `--language` controls recognition, not translation or the output writing system.
+Supported languages in this aligned pipeline are Chinese, Cantonese, English, German, Spanish, French, Italian, Portuguese, and Russian. Japanese and Korean require tokenizer packages absent from this frozen build. Other ASR languages are unavailable. Without a hint, the ASR model detects the language; an unsupported detected language stops the run. `--language` controls recognition, not translation or the output writing system.
 
 ## Traditional Chinese output
 
@@ -95,13 +95,13 @@ Options for `run`:
 
 Version 1 JSON contains `schemaVersion`, `source`, `models`, `timing`, `segments`, and `warnings`. Each segment contains `start`, `end`, `text`, `speaker`, and `activeSpeakers`. Times are source seconds. `source.selection` records the selected start and end.
 
-For one active voice, `speaker` contains its label. During overlap, `speaker` is `null` and `activeSpeakers` lists the detected voices. The interval is transcribed once; overlapping voices are not separated into isolated audio tracks.
+For one active voice, `speaker` contains its label. During overlap, `speaker` is `null` and `activeSpeakers` lists the detected voices. Overlapping voices are not separated into isolated audio tracks. If attribution is unknown, `speaker` is `null` and `activeSpeakers` is empty. Text and SRT render that case as `[unknown speaker]`.
 
 The Effect Schema validates timestamp bounds, segment order, non-overlap, and speaker-field consistency. The exported JSON Schema represents field structure and simple constraints; relational checks are enforced at runtime.
 
-Nemotron processes the selected recording once with continuous speaker state. Adjacent spans with the same active speaker set are combined, and real gaps remain. ASR inputs are bounded to 25 seconds, so long turns can be cut across a sentence. Timestamps describe these turns or slices, not individual words.
+Nemotron processes the selected recording once with continuous speaker state. ASR independently recognizes the whole selection in continuous windows of up to 30 seconds. Qwen3-ForcedAligner estimates word or character timestamps, then the worker assigns speaker labels from the independent activity timeline. New transcripts have `timing: "forced-aligned"` and `models.alignment`. Old `timing: "speaker-turn"` transcripts still decode with their original meaning. These are model estimates, not verified word accuracy. Fixed window boundaries can still cut a sentence.
 
-Up to eight speaker labels are supported. Labels can drift or split a person's voice on long recordings. Empty ASR results are omitted and counted in JSON warnings; that count does not measure a duration of missing speech. The CLI does not identify people, link voices across recordings, or export separate audio files for each speaker. Review important transcripts against the recording.
+Up to eight speaker labels are supported. Labels can drift or split a person's voice on long recordings. Empty recognition windows are counted in JSON warnings. Zero-duration alignment items retain their text through an adjacent timed item. Invalid or unmappable alignment stops the run before an output file is published. Recognition uses the language hint or detected language; alignment requires a language supported by the pinned aligner. The CLI does not identify people, link voices across recordings, or export separate audio files for each speaker. Review important transcripts against the recording.
 
 ## Configuration
 

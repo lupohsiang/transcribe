@@ -15,11 +15,22 @@ type TranscriptShape = {
     readonly duration: number;
     readonly selection: { readonly start: number; readonly end: number };
   };
-  readonly models: { readonly asr: string; readonly diarization: string };
-  readonly timing: "speaker-turn";
   readonly segments: ReadonlyArray<SegmentShape>;
   readonly warnings: ReadonlyArray<string>;
-};
+} & (
+  | {
+      readonly timing: "speaker-turn";
+      readonly models: { readonly asr: string; readonly diarization: string };
+    }
+  | {
+      readonly timing: "forced-aligned";
+      readonly models: {
+        readonly asr: string;
+        readonly diarization: string;
+        readonly alignment: string;
+      };
+    }
+);
 
 const FiniteSeconds = Schema.Number.pipe(
   Schema.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0)),
@@ -41,32 +52,40 @@ const SegmentSchema = Schema.Struct({
       const unique = new Set(active);
       const expectedSpeaker = active.length === 1 ? active[0] : null;
       return (
-        (active.length > 0 &&
-          unique.size === active.length &&
-          segment.speaker === expectedSpeaker) ||
+        (unique.size === active.length && segment.speaker === expectedSpeaker) ||
         "speaker must match the active speaker set"
       );
     }),
   ),
 );
 
-const TranscriptFields = Schema.Struct({
+const TranscriptFields = {
   schemaVersion: Schema.Literal(1),
   source: Schema.Struct({
     path: Schema.String,
     duration: FiniteSeconds,
     selection: Schema.Struct({ start: FiniteSeconds, end: FiniteSeconds }),
   }),
-  models: Schema.Struct({
-    asr: Schema.String,
-    diarization: Schema.String,
-  }),
-  timing: Schema.Literal("speaker-turn"),
   segments: Schema.Array(SegmentSchema),
   warnings: Schema.Array(Schema.String),
-});
+};
 
-export const TranscriptSchema = TranscriptFields.pipe(
+export const TranscriptSchema = Schema.Union([
+  Schema.Struct({
+    ...TranscriptFields,
+    models: Schema.Struct({ asr: Schema.String, diarization: Schema.String }),
+    timing: Schema.Literal("speaker-turn"),
+  }),
+  Schema.Struct({
+    ...TranscriptFields,
+    models: Schema.Struct({
+      asr: Schema.String,
+      diarization: Schema.String,
+      alignment: Schema.String,
+    }),
+    timing: Schema.Literal("forced-aligned"),
+  }),
+]).pipe(
   Schema.check(
     Schema.makeFilter<TranscriptShape>(
       (transcript) => transcript.source.path.length > 0 || "source path must not be empty",

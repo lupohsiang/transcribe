@@ -3,23 +3,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { Context, Effect, Layer, Schema } from "effect";
 import { type AppError, AppFailure, appError } from "./errors";
+import { ModelsLockSchema } from "./models";
 import { runProcess } from "./process";
 import { getRuntimeDirectory } from "./runtime";
 import { decodeTranscript, type Transcript } from "./transcript";
-
-const ModelSnapshotSchema = Schema.Struct({
-  id: Schema.String,
-  revision: Schema.String,
-  path: Schema.String,
-});
-
-const ModelsLockSchema = Schema.Struct({
-  schemaVersion: Schema.Literal(1),
-  models: Schema.Struct({
-    asr: ModelSnapshotSchema,
-    diarization: ModelSnapshotSchema,
-  }),
-});
 
 const WorkerResponseSchema = Schema.Union([
   Schema.Struct({ ok: Schema.Literal(true), transcript: Schema.Unknown }),
@@ -124,7 +111,10 @@ async function runTranscription(request: TranscriptionRequest): Promise<Transcri
       JSON.parse(await readFile(manifestPath, "utf8")),
     );
   } catch (cause) {
-    throw appError("SetupError", `model setup manifest is invalid: ${String(cause)}`);
+    throw appError(
+      "SetupError",
+      `model setup manifest is invalid; run transcribe setup: ${String(cause)}`,
+    );
   }
   for (const [name, model] of Object.entries(lock.models)) {
     try {
@@ -273,7 +263,10 @@ async function runTranscription(request: TranscriptionRequest): Promise<Transcri
     const expectedDiarization = `${lock.models.diarization.id}@${lock.models.diarization.revision}`;
     if (
       transcript.models.asr !== expectedAsr ||
-      transcript.models.diarization !== expectedDiarization
+      transcript.models.diarization !== expectedDiarization ||
+      transcript.timing !== "forced-aligned" ||
+      transcript.models.alignment !==
+        `${lock.models.alignment.id}@${lock.models.alignment.revision}`
     ) {
       throw appError(
         "TranscriptError",

@@ -6,7 +6,7 @@
 
 transcribe is a local command-line tool for audio transcription and speaker diarization on Apple silicon.
 
-Turn recordings into readable transcripts, JSON for agents and scripts, or SRT subtitles. The CLI uses Bun and Effect, with Qwen3-ASR for speech recognition and Nemotron for speaker diarization through MLX.
+Turn recordings into readable transcripts, JSON for agents and scripts, or SRT subtitles. The CLI uses Bun and Effect, with Qwen3-ASR for speech recognition, Qwen3-ForcedAligner for timestamps, and Nemotron for speaker diarization through MLX.
 
 Preparation downloads dependencies and model files. Transcription uses local snapshots with Hugging Face and Transformers offline flags. Speaker labels distinguish voices within a run; they do not identify people by name.
 
@@ -61,9 +61,15 @@ See the [command-line guide](docs/cli.md) for examples, options, configuration, 
 - [Verification](docs/VERIFICATION.md): the real-recording test, results, and accuracy limitations.
 - [Model pins](model-pins.json): exact model repositories and revisions.
 
-Up to eight speaker labels are supported. Overlapping voices remain unattributed, timestamps describe speaker turns rather than individual words, and intervals without recognized text are reported in the JSON warnings. Review important transcripts against the recording.
+Recognition uses continuous audio windows of up to 30 seconds, independently of speaker changes. The forced aligner estimates word or character timestamps before speaker labels are assigned. Speech outside detected speaker activity is kept with an unknown-speaker label. Up to eight speaker labels are supported, and overlapping voices remain unattributed. Review important transcripts against the recording.
+
+Aligned transcription currently supports Chinese, Cantonese, English, German, Spanish, French, Italian, Portuguese, and Russian. Japanese and Korean need tokenizer dependencies that this frozen build does not include. Other ASR languages are unavailable in this pipeline.
+
+Run `setup` again when upgrading from a version without the alignment model. See [transcription quality](docs/QUALITY.md) for the design, limitations, and reference-based evaluation.
 
 ## Development
+
+Follow the [coding standards](CODING_STANDARDS.md), including the rule against tautological tests.
 
 Install the JavaScript dependencies and run the checks:
 

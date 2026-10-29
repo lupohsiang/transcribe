@@ -8,6 +8,10 @@
     "diarization": {
       "id": "mlx-community/Nemotron-3-Diarization-8bit",
       "revision": "dd8b8ce3d69a80540a7e50150e2beed1c34fee37"
+    },
+    "alignment": {
+      "id": "mlx-community/Qwen3-ForcedAligner-0.6B-8bit",
+      "revision": "0e1a68e91d815300c7c9754b2a7639378b23db15"
     }
   }
 }
