@@ -38,7 +38,7 @@ class ContextRecognitionTests(unittest.TestCase):
                 return SimpleNamespace(text='你好，世界。' if duration >= 3 else '碎片',
                                        language=['Chinese'])
 
-            aligner = SimpleNamespace(generate=lambda *args, **kwargs: SimpleNamespace(items=[
+            aligner = SimpleNamespace(get_supported_languages=lambda: ['chinese', 'english'], generate=lambda *args, **kwargs: SimpleNamespace(items=[
                 SimpleNamespace(text='你', start_time=0.05, end_time=0.2),
                 SimpleNamespace(text='好', start_time=0.2, end_time=0.4),
                 SimpleNamespace(text='世', start_time=0.55, end_time=0.7),

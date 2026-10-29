@@ -61,6 +61,28 @@ describe("transcript boundary", () => {
   });
 });
 
+describe("aligned transcript boundary", () => {
+  test("preserves alignment provenance and unknown speaker text", () => {
+    const aligned: Transcript = {
+      ...transcript,
+      timing: "forced-aligned",
+      models: { ...transcript.models, alignment: "aligner@revision" },
+      segments: [{ ...firstSegment, text: "保留文字。", speaker: null, activeSpeakers: [] }],
+    };
+    const decoded = decodeTranscript(aligned);
+    expect(decoded).toEqual(aligned);
+    expect(formatTranscript(decoded, "text")).toContain("[unknown speaker]: 保留文字。");
+    expect(formatTranscript(decoded, "srt")).toContain("[unknown speaker]: 保留文字。");
+    expect(() => decodeTranscript({ ...aligned, models: transcript.models })).toThrow();
+    expect(() =>
+      decodeTranscript({
+        ...aligned,
+        segments: [{ ...firstSegment, speaker: "speaker_0", activeSpeakers: [] }],
+      }),
+    ).toThrow();
+  });
+});
+
 describe("transcript formats", () => {
   test("converts Chinese to Taiwan Traditional in JSON, text, and SRT without changing metadata", () => {
     const input: Transcript = {

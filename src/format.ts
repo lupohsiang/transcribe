@@ -31,6 +31,7 @@ function timestamp(seconds: number, separator: "," | "."): string {
 
 function label(segment: Transcript["segments"][number]): string {
   if (segment.speaker !== null) return segment.speaker;
+  if (segment.activeSpeakers.length === 0) return "[unknown speaker]";
   return `[overlap: ${segment.activeSpeakers.join(", ")}]`;
 }
 

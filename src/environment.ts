@@ -2,24 +2,10 @@ import { access, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
 import { appError } from "./errors";
+import { type ModelState, ModelsLockSchema } from "./models";
 import { runProcess } from "./process";
 import { getRuntimeDirectory } from "./runtime";
 import { getDataDirectory } from "./transcriber";
-
-const ModelSnapshotSchema = Schema.Struct({
-  id: Schema.String,
-  revision: Schema.String,
-  path: Schema.String,
-});
-const ModelsLockSchema = Schema.Struct({
-  schemaVersion: Schema.Literal(1),
-  models: Schema.Struct({
-    asr: ModelSnapshotSchema,
-    diarization: ModelSnapshotSchema,
-  }),
-});
-
-export type ModelState = Schema.Schema.Type<typeof ModelsLockSchema>;
 
 export type Diagnostic = {
   readonly name: string;

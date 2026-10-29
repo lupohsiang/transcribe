@@ -41,6 +41,7 @@ async function prepare(): Promise<void> {
   await writeWave(inputPath);
   await mkdir(join(modelHome, "asr"), { recursive: true });
   await mkdir(join(modelHome, "diarization"), { recursive: true });
+  await mkdir(join(modelHome, "alignment"), { recursive: true });
   await writeFile(
     join(modelHome, "models.lock.json"),
     JSON.stringify({
@@ -50,6 +51,11 @@ async function prepare(): Promise<void> {
           id: "mlx-community/Qwen3-ASR-1.7B-8bit",
           revision: "a8379a2e2f9e313c9292cdf1af4055ab56d50d55",
           path: join(modelHome, "asr"),
+        },
+        alignment: {
+          id: "mlx-community/Qwen3-ForcedAligner-0.6B-8bit",
+          revision: "0e1a68e91d815300c7c9754b2a7639378b23db15",
+          path: join(modelHome, "alignment"),
         },
         diarization: {
           id: "mlx-community/Nemotron-3-Diarization-8bit",
@@ -74,9 +80,10 @@ async function prepare(): Promise<void> {
       " 'source': {'path': request['source_path'], 'duration': request['source_duration'], 'selection': {'start': request['source_offset'], 'end': request['source_offset'] + request['selected_duration']}},",
       " 'models': {",
       "  'asr': 'mlx-community/Qwen3-ASR-1.7B-8bit@a8379a2e2f9e313c9292cdf1af4055ab56d50d55',",
+      "  'alignment': os.environ.get('FAKE_ALIGNMENT_MODEL', 'mlx-community/Qwen3-ForcedAligner-0.6B-8bit@0e1a68e91d815300c7c9754b2a7639378b23db15'),",
       "  'diarization': 'mlx-community/Nemotron-3-Diarization-8bit@dd8b8ce3d69a80540a7e50150e2beed1c34fee37',",
       " },",
-      " 'timing': 'speaker-turn',",
+      " 'timing': 'forced-aligned',",
       " 'segments': [{'start': start, 'end': end, 'text': os.environ.get('FAKE_WORKER_TEXT', 'fixture transcript'), 'speaker': 'speaker_0', 'activeSpeakers': ['speaker_0']}],",
       " 'warnings': [],",
       "}",
@@ -149,7 +156,7 @@ describe("transcribe run CLI", () => {
     expect(JSON.parse(result.stdout)).toMatchObject({
       schemaVersion: 1,
       source: { path: inputPath, selection: { start: 0.5, end: 0.75 } },
-      timing: "speaker-turn",
+      timing: "forced-aligned",
       segments: [{ start: 0.55, text: "fixture transcript", speaker: "speaker_0" }],
     });
   });
