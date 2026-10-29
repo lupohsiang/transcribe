@@ -69,6 +69,8 @@ bun src/cli.ts run "recording.m4a" --duration 120 --format text
 
 ## 開發
 
+請遵守[程式碼規範](CODING_STANDARDS.md)，測試必須驗證實際行為，不可使用自我驗證的斷言。
+
 安裝 JavaScript 相依套件並執行檢查：
 
 ```bash

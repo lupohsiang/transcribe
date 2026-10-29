@@ -69,6 +69,8 @@ Run `setup` again when upgrading from a version without the alignment model. See
 
 ## Development
 
+Follow the [coding standards](CODING_STANDARDS.md), including the rule against tautological tests.
+
 Install the JavaScript dependencies and run the checks:
 
 ```bash

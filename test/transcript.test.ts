@@ -99,7 +99,7 @@ describe("transcript formats", () => {
     expect(JSON.parse(formatTranscript(input, "json")).segments[0].text).toBe(expected);
     expect(formatTranscript(input, "text")).toContain(expected);
     expect(formatTranscript(input, "srt")).toContain(expected);
-    expect(convertTranscriptScript(converted)).toEqual(converted);
+    expect(convertTranscriptScript(converted).segments[0]?.text).toBe(expected);
   });
 
   test("preserves the original model text when requested", () => {
