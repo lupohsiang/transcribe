@@ -50,3 +50,13 @@ On 2026-10-28, built an Apple Silicon Mach-O executable with Bun 1.3.11 and inst
 Ran the installed command through its symlink from `/private/tmp`, with no Bun executable on PATH. Its own `setup` created a separate Python 3.13.5 environment with the frozen dependencies and reused the existing pinned model snapshots. A 15-second selection of the supplied recording produced four text segments from five diarized intervals, with the omitted interval reported as a warning. Chinese output was Traditional Chinese. The private transcript remains in ignored local artifacts.
 
 The release workflow runs checks and protocol tests on Linux and cross-compiles the Apple Silicon executable. MLX inference and native installation were verified locally; the workflow does not claim to run model inference on Linux.
+
+## Context-preserving recognition
+
+The updated pipeline completed the supplied 5,365.738667-second recording in 595.96 seconds. All 179 continuous recognition windows completed ASR and forced alignment. The validated output contains 2,548 segments, including 272 with unknown speaker attribution and 640 with simultaneous speaker activity. Zero-duration aligned items appeared in every window and retained their text through adjacent timed items. The original transcript was preserved. These counts do not establish recognition or speaker accuracy.
+
+A matching 60-second CLI comparison with an explicit Chinese hint took 20.15 seconds before the fix and 17.88 seconds afterward. The longer-context output replaced several garbled fragments with more coherent phrases. There is no human-checked reference, so no character error rate is claimed. A separate paired-model probe peaked at 5,207,811,596 MLX bytes on the 18 GiB Mac.
+
+The worker regression failed before the fix with eight isolated fragments and passed afterward with the complete expected sentence. The final checks passed 17 Bun tests and 23 Python tests. One CLI integration test exceeded its five-second test timeout during the full inference job; it passed when the final suite ran after inference. The test timeout was not changed.
+
+The pinned aligner supports fewer languages than the recognizer. The worker now excludes Japanese and Korean when their required tokenizer modules are absent. The README and CLI guides state the narrower supported-language contract. Chinese and English remain supported. See [transcription quality](QUALITY.md) for the evaluation procedure and remaining limitations.
