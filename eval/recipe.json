@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "manifest": "JSONL; one immutable case object per line",
+  "starter_cases": {
+    "ascend": {
+      "corpus": "ASCEND",
+      "source_split": "test",
+      "counts": {"mixed": 6, "zh": 3, "en": 3},
+      "minimum_duration_seconds": 2,
+      "selection": "For each source language, sort source IDs ascending and choose the first required count with duration >= 2 seconds. Sort the combined cases by source ID before export.",
+      "group": "ascend-test",
+      "split": "heldout",
+      "used_for_tuning": false,
+      "language_hint": null,
+      "chinese_script": "original",
+      "reference_status": "source-labeled"
+    },
+    "silence_fixture": {
+      "duration_seconds": 5,
+      "format": "mono 16 kHz signed 16-bit PCM; every sample is zero",
+      "split": "dev",
+      "reference_status": "checked contract fixture",
+      "speech_accuracy_gate_eligible": false
+    },
+    "private_interview": {
+      "selection": "Complete transcript blocks from 00:00 through 01:21, after the **逐字稿** marker only",
+      "split": "dev",
+      "used_for_tuning": true,
+      "reference_status": "draft",
+      "chinese_script": "zh-TW",
+      "speaker_names": "Stored in provenance only; excluded from scoring text"
+    }
+  },
+  "prepare_commands": [
+    "mkdir -p artifacts/eval-data/downloads",
+    "curl --fail --location 'https://huggingface.co/datasets/CAiRE/ASCEND/resolve/737e9800ae31be9932ba8464c80366559bd28424/main/test-00000-of-00001.parquet' --output artifacts/eval-data/downloads/ascend-test.parquet",
+    "uv venv --python 3.12 artifacts/eval-data/.venv",
+    "uv pip install --python artifacts/eval-data/.venv/bin/python pyarrow==23.0.1",
+    "artifacts/eval-data/.venv/bin/python scripts/prepare-eval.py starter --parquet artifacts/eval-data/downloads/ascend-test.parquet --output-dir artifacts/eval-data",
+    "python3 scripts/prepare-eval.py private-draft --source-markdown '/path/to/AI 工作訪談草稿 商品組 8_24.md' --audio '/path/to/新錄音 4.m4a' --output-dir artifacts/eval-data"
+  ],
+  "runner_commands": [
+    "python3 scripts/evaluate-suite.py validate artifacts/eval-data/manifest.private.jsonl",
+    "python3 scripts/evaluate-suite.py run artifacts/eval-data/manifest.private.jsonl --out artifacts/eval-data/run-baseline-1",
+    "python3 scripts/evaluate-suite.py score artifacts/eval-data/manifest.private.jsonl --outputs artifacts/eval-data/run-baseline-1 --report artifacts/eval-data/run-baseline-1-report.json"
+  ],
+  "reporting": {
+    "cer": "NFKC, casefold, retain Unicode letters and numbers; punctuation and whitespace are ignored",
+    "mixed_error_rate": "Han characters are single tokens; contiguous non-Han letters/numbers are word tokens",
+    "english_wer": "Reported only for English references",
+    "source_labels": "Report source-reference agreement, not human-checked accuracy",
+    "drafts": "Report provisional reference agreement and keep out of the release gate",
+    "release_gate": "Requires bound successful run records and checked heldout speech references. No thresholds are configured, so the suite reports not ready."
+  }
+}
