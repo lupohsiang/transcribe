@@ -21,6 +21,8 @@ MAX_ASR_SECONDS = 30
 MIN_ASR_TAIL_SECONDS = 5
 MODEL_NAMES = ("asr", "diarization", "alignment")
 DIARIZATION_THRESHOLD = 0.5
+# The pinned Qwen3 aligner quantizes timestamps in 80 ms steps.
+ALIGNMENT_TIMESTAMP_SECONDS = 0.08
 
 
 def progress(message: str) -> None:
@@ -241,6 +243,7 @@ def aligned_units(recognition: Recognition, items: list[Any]) -> tuple[tuple[Ali
     cursor = 0
     previous_end = 0.0
     duration = recognition.end - recognition.start
+    latest_end = duration + ALIGNMENT_TIMESTAMP_SECONDS / 2 + 1e-9
     for item in items:
         text = field(item, "text")
         if not isinstance(text, str):
@@ -254,13 +257,16 @@ def aligned_units(recognition: Recognition, items: list[Any]) -> tuple[tuple[Ali
             end = float(field(item, "end_time"))
         except (TypeError, ValueError):
             raise ValueError("alignment returned nonnumeric timestamps") from None
-        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end < start or end > duration:
+        if (not math.isfinite(start) or not math.isfinite(end)
+                or start < 0 or start > duration or end < start or end > latest_end):
             raise ValueError("alignment returned invalid or out-of-window timestamps")
         if start < previous_end:
             raise ValueError("alignment returned nonmonotone timestamps")
         text_start = 0 if cursor == 0 else indices[cursor]
         text_end = indices[next_cursor] if next_cursor < len(indices) else len(recognition.text)
-        units.append(AlignedUnit(recognition.start + start, recognition.start + end, text_start, text_end))
+        units.append(AlignedUnit(
+            recognition.start + start, min(recognition.end, recognition.start + end), text_start, text_end,
+        ))
         cursor = next_cursor
         previous_end = end
     if cursor != len(retained):

@@ -138,6 +138,47 @@ class AlignmentTests(unittest.TestCase):
             {'start': 30.25, 'end': 30.75, 'text': 'hello.', 'speaker': 'B', 'activeSpeakers': ['B']},
         ])
 
+    def test_clamps_quantized_end_to_audio_endpoint_without_changing_text(self) -> None:
+        output, degenerate = self.assemble("What's your major and your hobbies?", [
+            item("What's", .16, .32), item('your', .4, .96), item('major', 1.04, 1.76),
+            item('and', 1.84, 2.16), item('your', 2.16, 2.4), item('hobbies', 2.4, 2.88),
+        ], (Activity(0, 1.8, ('A',)), Activity(1.8, 2.876, ('B',))), end=2.876)
+        self.assertEqual(output, [
+            {'start': .16, 'end': 1.76, 'text': "What's your major ", 'speaker': 'A', 'activeSpeakers': ['A']},
+            {'start': 1.84, 'end': 2.876, 'text': 'and your hobbies?', 'speaker': 'B', 'activeSpeakers': ['B']},
+        ])
+        self.assertFalse(degenerate)
+
+    def test_accepts_float_roundoff_and_half_quantum_endpoint(self) -> None:
+        output, _ = self.assemble('end.', [item('end', .4, .8000000000000002)], end=.8)
+        self.assertEqual(output, [
+            {'start': .4, 'end': .8, 'text': 'end.', 'speaker': None, 'activeSpeakers': []},
+        ])
+        output, _ = self.assemble('end.', [item('end', .8, .96)], end=.92)
+        self.assertEqual(output, [
+            {'start': .8, 'end': .92, 'text': 'end.', 'speaker': None, 'activeSpeakers': []},
+        ])
+        for duration in (.91999999, .88):
+            with self.subTest(duration=duration), self.assertRaisesRegex(ValueError, 'out-of-window'):
+                self.assemble('end.', [item('end', .8, .96)], end=duration)
+
+    def test_clamping_preserves_order_at_the_next_window(self) -> None:
+        first, _ = self.assemble('one ', [item('one', .8, 1.04)], end=1)
+        second, _ = self.assemble('two.', [item('two', 0, .5)], start=1, end=2)
+        self.assertEqual(first + second, [
+            {'start': .8, 'end': 1, 'text': 'one ', 'speaker': None, 'activeSpeakers': []},
+            {'start': 1, 'end': 1.5, 'text': 'two.', 'speaker': None, 'activeSpeakers': []},
+        ])
+        with self.assertRaisesRegex(ValueError, 'nonmonotone'):
+            self.assemble('one two', [item('one', .8, 1.04), item('two', 1, 1.04)], end=1)
+
+    def test_clamping_does_not_invent_positive_duration_outside_audio(self) -> None:
+        for start in (1.001, 1.04):
+            with self.subTest(start=start), self.assertRaisesRegex(ValueError, 'out-of-window'):
+                self.assemble('end.', [item('end', start, 1.04)], end=1)
+        with self.assertRaisesRegex(ValueError, 'only zero-duration'):
+            self.assemble('end.', [item('end', 1, 1.04)], end=1)
+
     def test_unusable_alignment_fails_without_inventing_timestamps(self) -> None:
         cases = [
             ('hello', [], 'no usable items'),
@@ -147,6 +188,8 @@ class AlignmentTests(unittest.TestCase):
             ('hello world', [item('hello', 1, 2), item('world', .5, 1)], 'nonmonotone'),
             ('hello', [item('hello', 0, 5)], 'out-of-window'),
             ('hello', [item('hello', float('nan'), 1)], 'invalid'),
+            ('hello', [item('hello', 0, float('nan'))], 'invalid'),
+            ('hello', [item('hello', 0, float('inf'))], 'invalid'),
             ('hello', [item('hello', -1, 1)], 'invalid'),
         ]
         for text, items, error in cases:
