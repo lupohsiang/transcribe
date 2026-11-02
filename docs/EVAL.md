@@ -2,6 +2,8 @@
 
 The evaluation runner invokes the production CLI on local audio, validates each saved transcript against its manifest selection, then scores the saved JSON. It does not alter the transcription worker. Evaluation artifacts and downloaded media live under ignored `artifacts/eval-data/`.
 
+The [hill-climb report](HILLCLIMB.md) records the frozen failure-aware metric, production experiments, and reserved comparison. The [starter baseline](EVAL-BASELINE.md) preserves the earlier 90-second attempt. Those measurements use different protocols and must not be compared directly.
+
 The starter recipe exports 12 ASCEND test utterances, six mixed-language, three Chinese, and three English. It chooses the earliest source IDs with at least two seconds of audio, then records all 12 in one heldout group because the source speakers recur across sessions. ASCEND references are source-labeled, not independently human checked. The sample uses the original Chinese script and automatic language detection. ASCEND is licensed CC BY-SA 4.0; see the [official ASCEND dataset card](https://huggingface.co/datasets/CAiRE/ASCEND).
 
 The generated five-second zero-PCM case checks the CLI and silence-hallucination reporting contract. It is a synthetic fixture and cannot qualify as a speech-accuracy reference. The optional private importer extracts complete 00:00 to 01:21 transcript blocks only after the `**逐字稿**` marker. It preserves the printed names in provenance, excludes them from reference text, and marks the case draft, development, and used for tuning. The copied audio and reference remain local.

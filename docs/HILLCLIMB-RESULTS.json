@@ -1,0 +1,891 @@
+{
+  "metric": "failure_adjusted_cer",
+  "target_relative_reduction": 0.2,
+  "minimum_measured_hypotheses": 3,
+  "accepted_commit": "b60e6fa22fd8beaa6637581b2f47cf9a2ffd3f77",
+  "development_relative_reduction": 0.4117647058823529,
+  "reserved_relative_reduction": 0.37037037037037035,
+  "reserved_repeats_per_version": 1,
+  "reserved_cases_consumed": true,
+  "case_freeze": {
+    "development_manifest_sha256": "5d79c6c958730c9816e42f27bf6633f8de8910425bb9aa37733b8fd8576b1828",
+    "holdout_manifest_sha256": "cf8a3dfe408961edf69635d41df285929b41a222e62fbb8c9188e4ca8f29f92d",
+    "holdout_ids": [
+      "ascend-validation-00001",
+      "ascend-validation-00003",
+      "ascend-validation-00004",
+      "ascend-validation-00006",
+      "ascend-validation-00095",
+      "ascend-validation-00096",
+      "ascend-validation-00109",
+      "ascend-validation-00340",
+      "ami-es2004a-100",
+      "ami-es2004a-320"
+    ],
+    "development_speakers": [
+      3,
+      17
+    ],
+    "holdout_ascend_speakers": [
+      7,
+      12,
+      20
+    ],
+    "selection_rule": "metadata and annotation bounds only; no candidate outputs inspected",
+    "reference_policy": "source-labeled; no local human checking; no diarization/timing accuracy claims"
+  },
+  "measurements": {
+    "baseline": {
+      "artifact": "artifacts/hillclimb/baseline/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "5d79c6c958730c9816e42f27bf6633f8de8910425bb9aa37733b8fd8576b1828",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 3,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-00002",
+              "ascend-00007",
+              "ascend-00009",
+              "ascend-00012",
+              "ascend-00022",
+              "ascend-00025",
+              "ascend-00031",
+              "ascend-00055",
+              "ascend-00132",
+              "ascend-00138",
+              "ascend-00143",
+              "ascend-00150"
+            ],
+            "private-draft": [
+              "private-interview-opening"
+            ],
+            "silence": [
+              "contract-silence-5s"
+            ],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.23776223776223776,
+        "median_completion": 0.9166666666666666,
+        "failure_adjusted_cer_by_repeat": [
+          0.23776223776223776,
+          0.23776223776223776,
+          0.2727272727272727
+        ],
+        "completion_by_repeat": [
+          0.9166666666666666,
+          0.9166666666666666,
+          0.8333333333333334
+        ],
+        "public_reference_chars": 286,
+        "public_case_count": 12,
+        "failure_ids_by_repeat": [
+          [
+            "ascend-00002"
+          ],
+          [
+            "ascend-00002"
+          ],
+          [
+            "ascend-00002",
+            "ascend-00022"
+          ]
+        ],
+        "corpus_language_slices": {
+          "ASCEND|en|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.425531914893617,
+            "median_completion": 0.6666666666666666,
+            "reference_chars": 94,
+            "cases": 3
+          },
+          "ASCEND|mixed|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.14893617021276595,
+            "median_completion": 1.0,
+            "reference_chars": 141,
+            "cases": 6
+          },
+          "ASCEND|zh|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.13725490196078433,
+            "median_completion": 1.0,
+            "reference_chars": 51,
+            "cases": 3
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0,
+          0,
+          0
+        ],
+        "case_ids_by_repeat": [
+          [
+            "contract-silence-5s"
+          ],
+          [
+            "contract-silence-5s"
+          ],
+          [
+            "contract-silence-5s"
+          ]
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          [],
+          [],
+          []
+        ],
+        "passed": true
+      },
+      "private_draft_advisory": {
+        "median_cer": 0.32793522267206476,
+        "by_repeat": [
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          },
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          },
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "fad4931e23fa5de69b84d34e40c041103e269b50e8ecb35cba0ce4858904e63b"
+      ]
+    },
+    "attempt1": {
+      "artifact": "artifacts/hillclimb/attempt1/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "5d79c6c958730c9816e42f27bf6633f8de8910425bb9aa37733b8fd8576b1828",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 3,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-00002",
+              "ascend-00007",
+              "ascend-00009",
+              "ascend-00012",
+              "ascend-00022",
+              "ascend-00025",
+              "ascend-00031",
+              "ascend-00055",
+              "ascend-00132",
+              "ascend-00138",
+              "ascend-00143",
+              "ascend-00150"
+            ],
+            "private-draft": [
+              "private-interview-opening"
+            ],
+            "silence": [
+              "contract-silence-5s"
+            ],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.13986013986013987,
+        "median_completion": 1.0,
+        "failure_adjusted_cer_by_repeat": [
+          0.13986013986013987,
+          0.13986013986013987,
+          0.13986013986013987
+        ],
+        "completion_by_repeat": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "public_reference_chars": 286,
+        "public_case_count": 12,
+        "failure_ids_by_repeat": [
+          [],
+          [],
+          []
+        ],
+        "corpus_language_slices": {
+          "ASCEND|en|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.1276595744680851,
+            "median_completion": 1.0,
+            "reference_chars": 94,
+            "cases": 3
+          },
+          "ASCEND|mixed|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.14893617021276595,
+            "median_completion": 1.0,
+            "reference_chars": 141,
+            "cases": 6
+          },
+          "ASCEND|zh|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.13725490196078433,
+            "median_completion": 1.0,
+            "reference_chars": 51,
+            "cases": 3
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0,
+          0,
+          0
+        ],
+        "case_ids_by_repeat": [
+          [
+            "contract-silence-5s"
+          ],
+          [
+            "contract-silence-5s"
+          ],
+          [
+            "contract-silence-5s"
+          ]
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          [],
+          [],
+          []
+        ],
+        "passed": true
+      },
+      "private_draft_advisory": {
+        "median_cer": 0.32793522267206476,
+        "by_repeat": [
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          },
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          },
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "f09121934dcc1847804c1f491f2fb6c739f3fdf2a349e5e15f552349ecb2eafb"
+      ]
+    },
+    "attempt2": {
+      "artifact": "artifacts/hillclimb/attempt2/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "5d79c6c958730c9816e42f27bf6633f8de8910425bb9aa37733b8fd8576b1828",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 1,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-00002",
+              "ascend-00007",
+              "ascend-00009",
+              "ascend-00012",
+              "ascend-00022",
+              "ascend-00025",
+              "ascend-00031",
+              "ascend-00055",
+              "ascend-00132",
+              "ascend-00138",
+              "ascend-00143",
+              "ascend-00150"
+            ],
+            "private-draft": [
+              "private-interview-opening"
+            ],
+            "silence": [
+              "contract-silence-5s"
+            ],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.13986013986013987,
+        "median_completion": 1.0,
+        "failure_adjusted_cer_by_repeat": [
+          0.13986013986013987
+        ],
+        "completion_by_repeat": [
+          1.0
+        ],
+        "public_reference_chars": 286,
+        "public_case_count": 12,
+        "failure_ids_by_repeat": [
+          []
+        ],
+        "corpus_language_slices": {
+          "ASCEND|en|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.1276595744680851,
+            "median_completion": 1.0,
+            "reference_chars": 94,
+            "cases": 3
+          },
+          "ASCEND|mixed|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.14893617021276595,
+            "median_completion": 1.0,
+            "reference_chars": 141,
+            "cases": 6
+          },
+          "ASCEND|zh|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.13725490196078433,
+            "median_completion": 1.0,
+            "reference_chars": 51,
+            "cases": 3
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0
+        ],
+        "case_ids_by_repeat": [
+          [
+            "contract-silence-5s"
+          ]
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          []
+        ],
+        "passed": true
+      },
+      "private_draft_advisory": {
+        "median_cer": 0.32793522267206476,
+        "by_repeat": [
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 81,
+            "cer": 0.32793522267206476
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "21108d0d4ca541b1321e1e9fd6c142e87e48bf87cefb20636f0dbc3ba41c2285"
+      ]
+    },
+    "attempt3": {
+      "artifact": "artifacts/hillclimb/attempt3/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "5d79c6c958730c9816e42f27bf6633f8de8910425bb9aa37733b8fd8576b1828",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 1,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-00002",
+              "ascend-00007",
+              "ascend-00009",
+              "ascend-00012",
+              "ascend-00022",
+              "ascend-00025",
+              "ascend-00031",
+              "ascend-00055",
+              "ascend-00132",
+              "ascend-00138",
+              "ascend-00143",
+              "ascend-00150"
+            ],
+            "private-draft": [
+              "private-interview-opening"
+            ],
+            "silence": [
+              "contract-silence-5s"
+            ],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.15384615384615385,
+        "median_completion": 1.0,
+        "failure_adjusted_cer_by_repeat": [
+          0.15384615384615385
+        ],
+        "completion_by_repeat": [
+          1.0
+        ],
+        "public_reference_chars": 286,
+        "public_case_count": 12,
+        "failure_ids_by_repeat": [
+          []
+        ],
+        "corpus_language_slices": {
+          "ASCEND|en|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.19148936170212766,
+            "median_completion": 1.0,
+            "reference_chars": 94,
+            "cases": 3
+          },
+          "ASCEND|mixed|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.1347517730496454,
+            "median_completion": 1.0,
+            "reference_chars": 141,
+            "cases": 6
+          },
+          "ASCEND|zh|source-labeled": {
+            "corpus": "ASCEND",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.13725490196078433,
+            "median_completion": 1.0,
+            "reference_chars": 51,
+            "cases": 3
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0
+        ],
+        "case_ids_by_repeat": [
+          [
+            "contract-silence-5s"
+          ]
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          []
+        ],
+        "passed": true
+      },
+      "private_draft_advisory": {
+        "median_cer": 0.340080971659919,
+        "by_repeat": [
+          {
+            "cases": 1,
+            "successful_cases": 1,
+            "reference_chars": 247,
+            "edits": 84,
+            "cer": 0.340080971659919
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "4b71eaf3dde842d8e53a61fa69272d9f7a758c7b9ee651fe2d60cb63f18b17b1"
+      ]
+    },
+    "holdout-baseline-2": {
+      "artifact": "artifacts/hillclimb/holdout-baseline-2/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "cf8a3dfe408961edf69635d41df285929b41a222e62fbb8c9188e4ca8f29f92d",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 1,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-validation-00001",
+              "ascend-validation-00003",
+              "ascend-validation-00004",
+              "ascend-validation-00006",
+              "ascend-validation-00095",
+              "ascend-validation-00096",
+              "ascend-validation-00109",
+              "ascend-validation-00340",
+              "ami-es2004a-100",
+              "ami-es2004a-320"
+            ],
+            "private-draft": [],
+            "silence": [],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.17532467532467533,
+        "median_completion": 0.9,
+        "failure_adjusted_cer_by_repeat": [
+          0.17532467532467533
+        ],
+        "completion_by_repeat": [
+          0.9
+        ],
+        "public_reference_chars": 616,
+        "public_case_count": 10,
+        "failure_ids_by_repeat": [
+          [
+            "ascend-validation-00340"
+          ]
+        ],
+        "corpus_language_slices": {
+          "AMI|en|source-labeled": {
+            "corpus": "AMI",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.051771117166212535,
+            "median_completion": 1.0,
+            "reference_chars": 367,
+            "cases": 2
+          },
+          "ASCEND-validation|en|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.07936507936507936,
+            "median_completion": 1.0,
+            "reference_chars": 63,
+            "cases": 2
+          },
+          "ASCEND-validation|mixed|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.5562913907284768,
+            "median_completion": 0.75,
+            "reference_chars": 151,
+            "cases": 4
+          },
+          "ASCEND-validation|zh|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.0,
+            "median_completion": 1.0,
+            "reference_chars": 35,
+            "cases": 2
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0
+        ],
+        "case_ids_by_repeat": [
+          []
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          []
+        ],
+        "passed": null
+      },
+      "private_draft_advisory": {
+        "median_cer": null,
+        "by_repeat": [
+          {
+            "cases": 0,
+            "successful_cases": 0,
+            "reference_chars": 0,
+            "edits": 0,
+            "cer": null
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "fad4931e23fa5de69b84d34e40c041103e269b50e8ecb35cba0ce4858904e63b"
+      ]
+    },
+    "holdout-final": {
+      "artifact": "artifacts/hillclimb/holdout-final/summary.json",
+      "experiment_spec": {
+        "manifest_sha256": "cf8a3dfe408961edf69635d41df285929b41a222e62fbb8c9188e4ca8f29f92d",
+        "scorer_sha256": "5a50e7984df97d1b0bf23975b06a3b8402ef53487e4a79d6ae0d3deb9de6d9b9",
+        "harness_sha256": "2a530af517f4109bb831dc731d03bc4b112ca8ba5fa7a0f21b923f31e9ccde0d",
+        "metric_policy": {
+          "normalization": "NFKC, casefold, keep Unicode letters and numbers",
+          "edits": "evaluate-suite edit_counts on normalized Unicode characters",
+          "aggregate": "pooled edits divided by pooled public speech reference characters",
+          "failed_case": "empty hypothesis; every normalized reference character is a deletion",
+          "private_draft": "report agreement separately as advisory; exclude from public speech CER",
+          "source_labeled": "source-reference agreement only; no release accuracy claim",
+          "silence": "report contract-silence insertions as a zero-character hard guard; exclude from speech CER"
+        },
+        "timeout_seconds": 120.0,
+        "repeats": 1,
+        "corpus_eligibility": {
+          "rules": {
+            "public_speech": "source-labeled or checked reference, non-private license, and corpus is not contract-silence",
+            "private_draft": "draft reference, advisory only",
+            "silence_guard": "corpus is contract-silence; inserted characters are excluded from speech CER"
+          },
+          "case_ids": {
+            "public-speech": [
+              "ascend-validation-00001",
+              "ascend-validation-00003",
+              "ascend-validation-00004",
+              "ascend-validation-00006",
+              "ascend-validation-00095",
+              "ascend-validation-00096",
+              "ascend-validation-00109",
+              "ascend-validation-00340",
+              "ami-es2004a-100",
+              "ami-es2004a-320"
+            ],
+            "private-draft": [],
+            "silence": [],
+            "excluded": []
+          },
+          "source_labeled_accuracy_claim": false
+        }
+      },
+      "objective": {
+        "metric": "failure_adjusted_cer",
+        "median_failure_adjusted_cer": 0.11038961038961038,
+        "median_completion": 1.0,
+        "failure_adjusted_cer_by_repeat": [
+          0.11038961038961038
+        ],
+        "completion_by_repeat": [
+          1.0
+        ],
+        "public_reference_chars": 616,
+        "public_case_count": 10,
+        "failure_ids_by_repeat": [
+          []
+        ],
+        "corpus_language_slices": {
+          "AMI|en|source-labeled": {
+            "corpus": "AMI",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.051771117166212535,
+            "median_completion": 1.0,
+            "reference_chars": 367,
+            "cases": 2
+          },
+          "ASCEND-validation|en|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "en",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.07936507936507936,
+            "median_completion": 1.0,
+            "reference_chars": 63,
+            "cases": 2
+          },
+          "ASCEND-validation|mixed|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "mixed",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.2913907284768212,
+            "median_completion": 1.0,
+            "reference_chars": 151,
+            "cases": 4
+          },
+          "ASCEND-validation|zh|source-labeled": {
+            "corpus": "ASCEND-validation",
+            "reference_language": "zh",
+            "reference_status": "source-labeled",
+            "median_failure_adjusted_cer": 0.0,
+            "median_completion": 1.0,
+            "reference_chars": 35,
+            "cases": 2
+          }
+        }
+      },
+      "silence_guard": {
+        "insertions_by_repeat": [
+          0
+        ],
+        "case_ids_by_repeat": [
+          []
+        ],
+        "median_insertions": 0,
+        "failed_ids_by_repeat": [
+          []
+        ],
+        "passed": null
+      },
+      "private_draft_advisory": {
+        "median_cer": null,
+        "by_repeat": [
+          {
+            "cases": 0,
+            "successful_cases": 0,
+            "reference_chars": 0,
+            "edits": 0,
+            "cer": null
+          }
+        ]
+      },
+      "source_tree_sha256": [
+        "f09121934dcc1847804c1f491f2fb6c739f3fdf2a349e5e15f552349ecb2eafb"
+      ]
+    }
+  },
+  "excluded_launcher_attempt": "artifacts/hillclimb/holdout-baseline/summary.json",
+  "claim_limits": [
+    "Source-reference agreement, not independently checked accuracy.",
+    "Development baseline and accepted candidate have three repeats; screening and reserved comparisons have one.",
+    "Private draft is advisory. Speaker and timestamp accuracy unscored.",
+    "Reserved cases are now exposed and cannot serve as a fresh holdout for further tuning."
+  ],
+  "verification": {
+    "check": "passed",
+    "bun_tests": {
+      "passed": 17,
+      "failed": 0
+    },
+    "python_tests": {
+      "passed": 46,
+      "failed": 0
+    },
+    "build": "passed",
+    "native_process_access": true,
+    "timeout_limits_changed": false,
+    "passing_logs": [
+      "artifacts/hillclimb/final-native-check.log",
+      "artifacts/hillclimb/final-native-regression.log",
+      "artifacts/hillclimb/final-build.log"
+    ],
+    "preserved_failing_logs": [
+      "artifacts/hillclimb/final-regression.log",
+      "artifacts/hillclimb/final-regression-2.log"
+    ],
+    "initial_baseline_green_gate": "Reported by retained task digest; no durable initial all-green log found."
+  }
+}
