@@ -59,6 +59,8 @@ See the [command-line guide](docs/cli.md) for examples, options, configuration, 
 - [Command-line guide](docs/cli.md): output formats, partial recordings, automation, and configuration.
 - [Design](docs/DESIGN.md): model selection and the transcription pipeline.
 - [Verification](docs/VERIFICATION.md): the real-recording test, results, and accuracy limitations.
+- [Speech evaluation](docs/EVAL.md): pinned public cases, private draft import, split validation, and reference-based scoring.
+- [Evaluation hill climb](docs/HILLCLIMB.md) records controlled comparisons, rejected candidates, and reserved cases.
 - [Model pins](model-pins.json): exact model repositories and revisions.
 
 Recognition uses continuous audio windows of up to 30 seconds, independently of speaker changes. The forced aligner estimates word or character timestamps before speaker labels are assigned. Speech outside detected speaker activity is kept with an unknown-speaker label. Up to eight speaker labels are supported, and overlapping voices remain unattributed. Review important transcripts against the recording.
