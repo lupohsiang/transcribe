@@ -4,7 +4,7 @@
   English · <a href="README.zh-tw.md">繁體中文</a>
 </p>
 
-transcribe is a local command-line tool for audio transcription and speaker diarization on Apple silicon.
+transcribe is a local command-line tool for transcribing local audio and video files with speaker diarization on Apple silicon.
 
 Turn recordings into readable transcripts, JSON for agents and scripts, or SRT subtitles. The CLI uses Bun and Effect, with Qwen3-ASR for speech recognition, Qwen3-ForcedAligner for timestamps, and Nemotron for speaker diarization through MLX.
 
@@ -50,6 +50,14 @@ bun src/cli.ts run "recording.m4a" --duration 120 --format text
 
 JSON is the default format. Use `--format srt` for subtitles. Progress goes to stderr; the transcript goes to stdout or the path supplied with `--output`. Existing output files require `--force` to replace.
 
+To see completed segments while a recording is processed:
+
+```bash
+bun src/cli.ts run "meeting.mp4" --stream --format text --output transcript.txt
+```
+
+`--stream` writes live results to stdout and keeps the final file export atomic. JSON streaming uses newline-delimited segment records followed by a completion record. Video inputs use the first audio track. Decoding and inference use bounded audio windows instead of a full-length temporary WAV. See [streaming output](docs/cli.md#stream-completed-segments) for latency and failure behavior.
+
 Chinese transcript text defaults to Taiwan Traditional Chinese in every format, using local OpenCC conversion after recognition. Use `--chinese-script original` to keep the model's original text. This setting does not translate other languages or change speaker labels and timestamps.
 
 See the [command-line guide](docs/cli.md) for examples, options, configuration, and troubleshooting.
@@ -83,6 +91,6 @@ bun run build
 bun run build:native
 ```
 
-Tests cover CLI behavior, FFmpeg conversion through a protocol fixture, schema validation, output protection, cancellation, and speaker interval partitioning. Real model inference is verified separately.
+Tests cover CLI behavior, real FFmpeg decoding, incremental worker records, schema validation, output protection, cancellation, and speaker interval partitioning. Real model inference is verified separately.
 
 `build` produces `dist/cli.js` for Bun. `build:native` produces an Apple Silicon executable, its Python support files, an install script, and checksums under `dist/release`. Ship the release archive together; moving only the executable leaves its worker files behind.

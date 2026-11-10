@@ -16,7 +16,27 @@ bun src/cli.ts run "recording.m4a" --format srt --output subtitles.srt
 
 每次執行 `run` 都會重新進行模型推論。改選輸出格式時，不會沿用先前產生的 JSON。轉寫完成後，CLI 才會以原子方式建立輸出檔案。若檔案已存在，需加上 `--force` 才能覆寫；CLI 會拒絕覆寫原始音訊。
 
-路徑含有空白時，請用引號包住。FFmpeg 會將輸入轉為暫存的單聲道 16 kHz PCM 音訊，不會修改原始錄音。
+路徑含有空白時，請用引號包住。只要 FFmpeg 能解碼第一條音軌並讀取來源長度，即可使用本機音訊或影片。FFmpeg 會將單聲道 16 kHz PCM 傳入有限長度的處理視窗，worker 只會將目前的辨識視窗寫成暫存 WAV，不會修改原始錄音。
+
+## 逐段輸出已完成的結果
+
+加入 `--stream`，即可在各片段完成後寫入 stdout：
+
+```bash
+bun src/cli.ts run "meeting.mp4" --stream --format text
+bun src/cli.ts run "meeting.mp4" --stream --format srt --output subtitles.srt
+bun src/cli.ts run "meeting.mp4" --stream --format json --quiet > transcript.jsonl
+```
+
+文字與 SRT 會逐段輸出完成對齊及說話者指派的結果。JSON 串流則每行輸出一個 JSON 物件。`segment` 紀錄包含 `type` 與 `segment`；成功時，最後會輸出 `complete` 紀錄，包含 `count` 與 `transcript`。其中 `transcript` 包含最終逐字稿除 `segments` 外的全部欄位。收集各個 `segment` 值即可重建第 1 版逐字稿。`schema` 指令描述的是重建後的逐字稿，不是串流紀錄的外層格式。
+
+使用 `--output <path>` 時，即時片段仍寫入 stdout，完整檔案則在成功後以原子方式發布。`--output -` 只會向 stdout 輸出一次。`--quiet` 只關閉診斷訊息，不會隱藏片段。未指定 `--stream` 時，stdout 仍在全部完成後輸出一份完整結果。
+
+若後續解碼、對齊或輸出失敗，stdout 可能只包含部分片段。請檢查結束碼；JSON 串流還必須具有最後的 `complete` 紀錄。失敗的執行不會覆寫輸出檔案，也無法接續中斷的工作。
+
+輸出以辨識視窗為單位，不會逐字產生。每個視窗最多包含 30 秒音訊。worker 會保留五秒後續音訊，以處理最後不足五秒的尾段，並等待說話者狀態確定。使用預設說話者設定時，長錄音的第一個視窗可能需要先解碼約 58 秒音訊，再加上推論時間。整個選取範圍會沿用同一份說話者狀態。
+
+程式沒有設定輸入檔案大小上限。音訊及說話者工作緩衝區有固定範圍；最終逐字稿使用的記憶體則隨文字量增加。模型記憶體、暫存磁碟空間，以及預設六小時的處理逾時，仍是實際限制。此模式只接受本機檔案，不支援麥克風、透過 stdin 傳入媒體或遠端網址。
 
 ## 擷取部分錄音
 
@@ -61,7 +81,7 @@ bun src/cli.ts schema > transcript.schema.json
 
 錯誤訊息會以 JSON 物件寫入 stderr。成功時結束碼為 0；失敗時為非零。輸入錯誤使用 2、取消執行使用 130、逾時使用 124。未加上 `--quiet` 時，stderr 也會包含進度與警告訊息，請勿將整段 stderr 當成單一 JSON 文件解析。
 
-Ctrl-C、SIGTERM 與 `--timeout` 都會停止目前的子行程群組，並清除暫存音訊。預設逾時時間為六小時。整次執行完成前，不會寫出逐字稿；目前也無法接續中斷的工作。
+Ctrl-C、SIGTERM 與 `--timeout` 都會停止目前的子行程群組，並清除暫存音訊。預設逾時時間為六小時。最終輸出檔案只會在成功後發布。使用 `--stream` 時，中斷前已完成的片段可能已經寫入 stdout。目前無法接續中斷的工作。
 
 ## 指令與選項
 
@@ -79,6 +99,7 @@ Ctrl-C、SIGTERM 與 `--timeout` 都會停止目前的子行程群組，並清�
 | --- | --- | --- |
 | `-f, --format <format>` | `json` | 選擇 `json`、`text` 或 `srt`。 |
 | `--json` | | 選擇 JSON 輸出。 |
+| `--stream` | 關閉 | 處理時逐段將已完成的結果寫入 stdout。 |
 | `-o, --output <path>` | stdout | 將結果寫入檔案；`-` 代表 stdout。 |
 | `--force` | 關閉 | 覆寫既有輸出檔案。 |
 | `--start <seconds>` | `0` | 從原始錄音的指定秒數開始。 |

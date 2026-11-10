@@ -16,7 +16,27 @@ bun src/cli.ts run "recording.m4a" --format srt --output subtitles.srt
 
 Each `run` command performs inference again. Choosing another format does not reuse an earlier JSON result. Output files are published atomically after transcription finishes. Use `--force` to replace an existing output; the CLI refuses to replace the input audio.
 
-Quote paths that contain spaces. FFmpeg decodes the input into temporary mono 16 kHz PCM audio; the source recording is not modified.
+Quote paths that contain spaces. Local audio and video files are supported when FFmpeg can decode their first audio track and read the source duration. FFmpeg pipes mono 16 kHz PCM into bounded processing windows. The worker writes only its current recognition window to a temporary WAV. The source recording is not modified.
+
+## Stream completed segments
+
+Add `--stream` to write completed segments to stdout as they become available:
+
+```bash
+bun src/cli.ts run "meeting.mp4" --stream --format text
+bun src/cli.ts run "meeting.mp4" --stream --format srt --output subtitles.srt
+bun src/cli.ts run "meeting.mp4" --stream --format json --quiet > transcript.jsonl
+```
+
+Text and SRT stream aligned, speaker-labeled segments. JSON streaming emits one JSON object per line. A `segment` record contains `type` and `segment`. Successful completion emits a `complete` record with `count` and `transcript` metadata containing every final transcript field except `segments`. Collect the segment values to reconstruct the version 1 transcript. The `schema` command describes that final transcript, not the stream envelopes.
+
+With `--output <path>`, live results still go to stdout and the complete file is published atomically after success. `--output -` streams to stdout once. `--quiet` suppresses diagnostics, not transcript segments. Without `--stream`, stdout remains one complete JSON, text, or SRT result.
+
+A later decoding, alignment, or output error can leave a partial stdout stream. Check the exit code and require a `complete` record for JSON streams. A failed run never replaces the output file. Interrupted runs cannot be resumed.
+
+Output arrives after whole recognition windows finish, not word by word. Windows contain at most 30 seconds of audio. The worker keeps five seconds of future audio to handle short final tails and waits for finalized speaker context. With the default speaker configuration, the first window of a long recording can require about 58 seconds of decoded audio plus inference time. One speaker state persists throughout the selection.
+
+There is no configured input file-size cap. Audio and speaker working buffers stay bounded, while memory for the final transcript grows with its text. Model memory, temporary disk space, and the default six-hour processing timeout remain practical limits. This mode accepts local files; microphone, stdin media, and remote URL inputs are unavailable.
 
 ## Select part of a recording
 
@@ -61,7 +81,7 @@ bun src/cli.ts schema > transcript.schema.json
 
 Errors are JSON objects on stderr. Success returns exit code 0; failures return nonzero. Input errors use 2, cancellation uses 130, and timeouts use 124. Without `--quiet`, stderr also contains progress and warning messages, so do not parse the entire stderr stream as one JSON document.
 
-Ctrl-C, SIGTERM, and `--timeout` stop the active subprocess group and clean up temporary audio. The default timeout is six hours. No transcript is published until the run finishes, and interrupted work cannot currently be resumed.
+Ctrl-C, SIGTERM, and `--timeout` stop the active subprocess group and clean up temporary audio. The default timeout is six hours. Final file exports publish only after success. With `--stream`, stdout can contain completed segments before an interruption. Interrupted work cannot currently be resumed.
 
 ## Commands and options
 
@@ -79,6 +99,7 @@ Options for `run`:
 | --- | --- | --- |
 | `-f, --format <format>` | `json` | Choose `json`, `text`, or `srt`. |
 | `--json` | | Choose JSON output. |
+| `--stream` | off | Emit completed segments on stdout while processing. |
 | `-o, --output <path>` | stdout | Write the result to a file; `-` means stdout. |
 | `--force` | off | Replace an existing output file. |
 | `--start <seconds>` | `0` | Start at this source timestamp. |

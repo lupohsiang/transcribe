@@ -4,7 +4,7 @@
   <a href="README.md">English</a> · 繁體中文
 </p>
 
-transcribe 是在 Apple Silicon Mac 上執行的本機命令列工具，可將音訊轉成逐字稿，並區分不同說話者。
+transcribe 是在 Apple Silicon Mac 上執行的本機命令列工具，可將本機音訊或影片轉成逐字稿，並區分不同說話者。
 
 將錄音輸出為方便閱讀的文字、供代理程式與腳本使用的 JSON，或 SRT 字幕。CLI 使用 Bun 與 Effect，透過 MLX 執行 Qwen3-ASR 語音辨識、Qwen3-ForcedAligner 時間對齊與 Nemotron 說話者分段。
 
@@ -50,6 +50,14 @@ bun src/cli.ts run "recording.m4a" --duration 120 --format text
 
 預設輸出格式為 JSON。需要字幕時，使用 `--format srt`。進度訊息寫入 stderr；逐字稿則寫入 stdout，或 `--output` 指定的檔案。若輸出檔案已存在，必須加上 `--force` 才會覆寫。
 
+若要在處理錄音時，逐段查看已完成的結果：
+
+```bash
+bun src/cli.ts run "meeting.mp4" --stream --format text --output transcript.txt
+```
+
+`--stream` 會將已完成的片段即時寫入 stdout；最終輸出檔案仍在成功後一次發布。JSON 串流使用逐行 JSON，依序提供片段及完成紀錄。影片使用第一條音軌。解碼與推論只保留有限長度的音訊，不會先建立整段錄音的暫存 WAV。延遲與失敗處理請參閱[逐段輸出](docs/cli.zh-tw.md#逐段輸出已完成的結果)。
+
 所有格式中的中文逐字稿預設輸出為臺灣正體字，使用本機 OpenCC 在語音辨識後轉換。若要保留模型原文，請加上 `--chinese-script original`。此設定不會翻譯其他語言，也不會更改說話者標籤與時間戳記。
 
 更多範例、選項、設定與疑難排解，請參閱[命令列使用指南](docs/cli.zh-tw.md)。
@@ -81,6 +89,6 @@ bun run build
 bun run build:native
 ```
 
-測試涵蓋 CLI 行為、搭配協定測試替身的 FFmpeg 轉檔、資料結構驗證、輸出檔案保護、取消執行，以及說話者區間的切分。實際模型推論另行驗證。
+測試涵蓋 CLI 行為、實際 FFmpeg 解碼、逐段 worker 紀錄、資料結構驗證、輸出檔案保護、取消執行，以及說話者區間的切分。實際模型推論另行驗證。
 
 `build` 產生透過 Bun 執行的 `dist/cli.js`；`build:native` 在 `dist/release` 產生 Apple Silicon 原生執行檔、Python 支援檔、安裝腳本與校驗碼。請使用完整發行壓縮檔，單獨搬移執行檔會缺少 worker。
