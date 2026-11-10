@@ -60,3 +60,20 @@ A matching 60-second CLI comparison with an explicit Chinese hint took 20.15 sec
 The worker regression failed before the fix with eight isolated fragments and passed afterward with the complete expected sentence. The final checks passed 17 Bun tests and 23 Python tests. One CLI integration test exceeded its five-second test timeout during the full inference job; it passed when the final suite ran after inference. The test timeout was not changed.
 
 The pinned aligner supports fewer languages than the recognizer. The worker now excludes Japanese and Korean when their required tokenizer modules are absent. The README and CLI guides state the narrower supported-language contract. Chinese and English remain supported. See [transcription quality](QUALITY.md) for the evaluation procedure and remaining limitations.
+
+## Streaming verification
+
+The incremental worker was compared with the previous pipeline on a 65-second AMI excerpt, starting at source second 100. The complete transcript matched exactly, including 29 segments, timestamps, speaker labels, and five warnings. Measured peak MLX allocation with all three model weights resident was 5,318,383,672 bytes. This is one checked regression case, not a recognition-accuracy or total-memory claim.
+
+A 65-second MP4 made from the evaluation audio also completed through the public CLI. Its 31 streamed segments exactly matched the atomic JSON export. On the final run, the first segment arrived at 54.74 seconds and completion arrived at 63.24 seconds. Earlier runs on the same host took less time; host memory pressure makes these observations unsuitable for a speed comparison.
+
+The final checks pass 31 Bun tests and 54 Python tests with unchanged timeout limits. Type checking, Biome, the Bun bundle, and the native Apple Silicon release build pass. Tests cover continuous speaker context across feed boundaries, short-tail rebalance, bounded pending audio over ten simulated minutes, real FFmpeg decoding, malformed worker records, source aliases, and cancellation. A Python subprocess holds an actual unread OS stdout pipe in the timeout regression because Bun's spawn wrappers can buffer that pipe internally. A closed-pipe regression verifies that the CLI stops the worker and reports a write error.
+
+The reusable proof script checks that a segment arrives before process exit and export publication, then compares every streamed segment and the completion metadata with the saved transcript. It records timings, the event trace, and source hashes. Choose a speech-containing excerpt at least 65 seconds long and a new output directory:
+
+```bash
+python3 scripts/verify-streaming.py "recording.mp4" \
+  --duration 65 --out artifacts/streaming/recheck
+```
+
+The CLI uses a bounded Bun FileSink with awaited flushes for streamed stdout. On this Bun version, `Bun.write` to a full stdout pipe can block the JavaScript thread. The FileSink path keeps cancellation responsive. After a failed output stream, the CLI reaps the worker before flushing its error and exiting.

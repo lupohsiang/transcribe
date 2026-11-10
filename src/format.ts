@@ -1,5 +1,5 @@
 import { Converter } from "opencc-js/cn2t";
-import type { Transcript } from "./transcript";
+import type { Transcript, TranscriptSegment } from "./transcript";
 
 export type TranscriptFormat = "json" | "text" | "srt";
 export type ChineseScript = "zh-TW" | "original";
@@ -58,4 +58,21 @@ export function formatTranscript(
         `${index + 1}\n${timestamp(segment.start, ",")} --> ${timestamp(segment.end, ",")}\n${label(segment)}: ${segment.text}\n`,
     )
     .join("\n");
+}
+
+export function formatStreamSegment(
+  input: TranscriptSegment,
+  format: TranscriptFormat,
+  script: ChineseScript = "zh-TW",
+  index = 1,
+): string {
+  const segment =
+    script === "original" ? input : { ...input, text: toTraditionalChinese(input.text) };
+  if (format === "json") {
+    return `${JSON.stringify({ type: "segment", segment })}\n`;
+  }
+  if (format === "text") {
+    return `[${timestamp(segment.start, ".")} – ${timestamp(segment.end, ".")}] ${label(segment)}: ${segment.text}\n`;
+  }
+  return `${index}\n${timestamp(segment.start, ",")} --> ${timestamp(segment.end, ",")}\n${label(segment)}: ${segment.text}\n\n`;
 }

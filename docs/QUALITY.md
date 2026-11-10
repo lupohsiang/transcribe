@@ -4,6 +4,8 @@ Recognition needs enough audio context to distinguish words. The original worker
 
 The worker now recognizes continuous, nonoverlapping windows of at most 30 seconds across the entire selection. Qwen3-ForcedAligner maps the recognized text to word or character times. The worker then assigns speaker labels using the independent diarization timeline. Raw text spans preserve punctuation, spaces, repeated words, and mixed Chinese and English. Traditional Chinese conversion remains the final formatting step.
 
+Audio decoding, diarization, and recognition now run incrementally. The worker retains one speaker state across recognition windows and waits for enough finalized speaker context before emitting a segment. Short-run filtering and gap merging span decoder block boundaries. A final tail shorter than five seconds still rebalances the preceding recognition window. `--stream` changes when the CLI delivers completed segments; it does not enable token-level recognition or revise earlier text. Fixed recognition boundaries and model-derived timestamps have the same limitations described below.
+
 A local 60-second CLI comparison took 20.15 seconds with the previous pipeline and 17.88 seconds with the new one. The new output retained more text and replaced several garbled fragments with more coherent phrases. This is a diagnostic comparison, not a measured accuracy score. No human-checked reference was available. Private audio and transcript excerpts remain outside Git.
 
 ## Timing and attribution

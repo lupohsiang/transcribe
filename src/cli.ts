@@ -6,13 +6,15 @@ import { Effect } from "effect";
 import packageJson from "../package.json";
 import { inspectEnvironment, inspectModels, setupModels } from "./environment";
 import { type AppError, AppFailure, appError } from "./errors";
-import { formatTranscript, type TranscriptFormat } from "./format";
+import { formatStreamSegment, formatTranscript, type TranscriptFormat } from "./format";
 import { writeOutput } from "./output";
 import { transcribeEffect } from "./transcriber";
 import { transcriptJsonSchema } from "./transcript";
 
 const program = new Command();
 const VERSION = packageJson.version;
+let stdoutUnavailable = false;
+let stdoutSink: ReturnType<typeof Bun.stdout.writer> | undefined;
 
 function withSignal<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController();
@@ -26,11 +28,94 @@ function withSignal<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
   });
 }
 
-function reportError(error: AppError): void {
-  process.stderr.write(
-    `${JSON.stringify({ error: { type: error._tag, message: error.message, exitCode: error.exitCode } })}\n`,
-  );
+async function reportError(error: AppError): Promise<void> {
+  const message = `${JSON.stringify({ error: { type: error._tag, message: error.message, exitCode: error.exitCode } })}\n`;
   process.exitCode = error.exitCode;
+  if (stdoutUnavailable) {
+    try {
+      await Bun.write(Bun.stderr, message);
+    } finally {
+      process.exit(error.exitCode);
+    }
+  } else {
+    process.stderr.write(message);
+  }
+}
+
+function awaitStreamWrite(
+  operation: number | Promise<number>,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) {
+    stdoutUnavailable = true;
+    throw stdoutFailure(signal);
+  }
+  const write = Promise.resolve(operation).then(() => undefined);
+  const fail = (cause: unknown): never => {
+    throw outputFailure(cause);
+  };
+  if (signal === undefined) {
+    return write.catch(fail);
+  }
+  let removeAbortListener = (): void => undefined;
+  const stopped = new Promise<never>((_resolve, reject) => {
+    const onAbort = (): void => {
+      stdoutUnavailable = true;
+      reject(stdoutFailure(signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    removeAbortListener = () => signal.removeEventListener("abort", onAbort);
+  });
+  return Promise.race([write, stopped]).catch(fail).finally(removeAbortListener);
+}
+
+function writeStdout(chunk: string, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    stdoutUnavailable = true;
+    throw stdoutFailure(signal);
+  }
+  try {
+    stdoutSink ??= Bun.stdout.writer({ highWaterMark: 1024 });
+    stdoutSink.write(chunk);
+    return awaitStreamWrite(stdoutSink.flush(), signal);
+  } catch (cause) {
+    return Promise.reject(outputFailure(cause));
+  }
+}
+
+async function endStdout(signal?: AbortSignal): Promise<void> {
+  if (stdoutSink === undefined) return;
+  if (signal?.aborted) {
+    stdoutUnavailable = true;
+    throw stdoutFailure(signal);
+  }
+  try {
+    const sink = stdoutSink;
+    await awaitStreamWrite(sink.end(), signal);
+    stdoutSink = undefined;
+  } catch (cause) {
+    throw outputFailure(cause);
+  }
+}
+
+function outputFailure(cause: unknown): Error {
+  stdoutUnavailable = true;
+  return isBrokenPipe(cause)
+    ? appError("WorkerError", "stdout pipe closed during streaming")
+    : cause instanceof Error
+      ? cause
+      : new Error(String(cause));
+}
+
+function isBrokenPipe(cause: unknown): boolean {
+  return cause instanceof Error && "code" in cause && cause.code === "EPIPE";
+}
+
+function stdoutFailure(signal: AbortSignal): AppFailure {
+  const cause = signal.reason;
+  return cause instanceof Error && cause.name === "TimeoutError"
+    ? appError("TimedOut", "transcription exceeded the configured timeout")
+    : appError("Interrupted", "transcription interrupted");
 }
 
 function parseFailure(cause: unknown): AppError {
@@ -102,7 +187,7 @@ async function validateOutputPath(
 
 program
   .name("transcribe")
-  .description("Transcribe local audio with speaker diarization")
+  .description("Transcribe local audio and video with speaker diarization")
   .version(VERSION)
   .exitOverride()
   .configureOutput({
@@ -113,14 +198,15 @@ program
 
 program
   .command("run")
-  .description("Transcribe an audio file and label overlapping speakers")
-  .argument("<file>", "audio file to transcribe")
+  .description("Transcribe a local audio or video file and label overlapping speakers")
+  .argument("<file>", "local audio or video file to transcribe")
   .addOption(
     new Option("-f, --format <format>", "output format")
       .choices(["json", "text", "srt"])
       .default("json"),
   )
   .option("--json", "shorthand for --format json")
+  .option("--stream", "write each transcript segment as it becomes available")
   .option("-o, --output <path>", "write to a file instead of stdout")
   .option("--force", "replace an existing output file")
   .option("--start <seconds>", "start time in the source file", (value) => parseStart(value), 0)
@@ -142,7 +228,7 @@ program
   .option("-q, --quiet", "suppress progress messages")
   .addHelpText(
     "after",
-    "\nExamples:\n  transcribe run recording.m4a\n  transcribe run recording.m4a --format srt --output recording.srt\n  transcribe run recording.m4a --start 60 --duration 120 --json\n",
+    "\nExamples:\n  transcribe run recording.m4a\n  transcribe run recording.m4a --format srt --output recording.srt\n  transcribe run meeting.mp4 --stream --format text\n  transcribe run recording.m4a --start 60 --duration 120 --json\n",
   )
   .action(
     async (
@@ -150,6 +236,7 @@ program
       options: {
         readonly format: string;
         readonly json?: boolean;
+        readonly stream?: boolean;
         readonly output?: string;
         readonly force?: boolean;
         readonly start: number;
@@ -174,9 +261,23 @@ program
       const outputPath = options.output === "-" ? undefined : options.output;
       const force = options.force === true;
       const quiet = options.quiet === true;
+      const stream = options.stream === true;
       const target =
         outputPath === undefined ? undefined : await validateOutputPath(file, outputPath, force);
-      const transcript = await withSignal((signal) => {
+      let segmentCount = 0;
+      await withSignal(async (signal) => {
+        const streamSignal = stream
+          ? AbortSignal.any([signal, AbortSignal.timeout(timeoutSeconds * 1000)])
+          : signal;
+        const onSegment = stream
+          ? async (segment: Parameters<typeof formatStreamSegment>[0]): Promise<void> => {
+              segmentCount += 1;
+              await writeStdout(
+                formatStreamSegment(segment, format, chineseScript, segmentCount),
+                streamSignal,
+              );
+            }
+          : undefined;
         const result = Effect.match(
           transcribeEffect({
             inputPath: file,
@@ -184,25 +285,46 @@ program
             durationSeconds,
             language: options.language,
             timeoutMs: timeoutSeconds * 1000,
-            signal,
+            signal: streamSignal,
             quiet,
+            ...(onSegment === undefined ? {} : { onSegment }),
           }),
           {
             onFailure: (error) => ({ ok: false as const, error }),
             onSuccess: (value) => ({ ok: true as const, value }),
           },
         );
-        return Effect.runPromise(result).then((outcome) => {
-          if (!outcome.ok) throw new AppFailure(outcome.error);
-          return outcome.value;
-        });
+        const outcome = await Effect.runPromise(result);
+        if (!outcome.ok) throw new AppFailure(outcome.error);
+        const transcript = outcome.value;
+        if (streamSignal.aborted) {
+          const cause = streamSignal.reason;
+          throw cause instanceof Error && cause.name === "TimeoutError"
+            ? appError("TimedOut", "transcription exceeded the configured timeout")
+            : appError("Interrupted", "transcription interrupted");
+        }
+        const output = formatTranscript(transcript, format as TranscriptFormat, chineseScript);
+        if (target !== undefined) {
+          await writeOutput(target, output, force);
+        }
+        if (streamSignal.aborted) throw stdoutFailure(streamSignal);
+        if (stream && format === "json") {
+          const metadata = {
+            schemaVersion: transcript.schemaVersion,
+            source: transcript.source,
+            models: transcript.models,
+            timing: transcript.timing,
+            warnings: transcript.warnings,
+          };
+          await writeStdout(
+            `${JSON.stringify({ type: "complete", transcript: metadata, count: segmentCount })}\n`,
+            streamSignal,
+          );
+        } else if (!stream && target === undefined) {
+          process.stdout.write(output);
+        }
+        if (stream) await endStdout(streamSignal);
       });
-      const output = formatTranscript(transcript, format as TranscriptFormat, chineseScript);
-      if (target === undefined) {
-        process.stdout.write(output);
-      } else {
-        await writeOutput(target, output, force);
-      }
     },
   );
 
@@ -270,6 +392,6 @@ try {
   if (cause instanceof CommanderError && cause.exitCode === 0) {
     process.exitCode = 0;
   } else {
-    reportError(parseFailure(cause));
+    await reportError(parseFailure(cause));
   }
 }

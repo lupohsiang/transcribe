@@ -1,20 +1,38 @@
-import { access, mkdtemp, readFile, rm, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { Context, Effect, Layer, Schema } from "effect";
 import { type AppError, AppFailure, appError } from "./errors";
 import { ModelsLockSchema } from "./models";
 import { runProcess } from "./process";
 import { getRuntimeDirectory } from "./runtime";
-import { decodeTranscript, type Transcript } from "./transcript";
+import { decodeTranscript, type Transcript, type TranscriptSegment } from "./transcript";
 
-const WorkerResponseSchema = Schema.Union([
-  Schema.Struct({ ok: Schema.Literal(true), transcript: Schema.Unknown }),
+const WorkerRecordSchema = Schema.Union([
   Schema.Struct({
-    ok: Schema.Literal(false),
-    error: Schema.Struct({ code: Schema.String, message: Schema.String }),
+    type: Schema.Literal("header"),
+    protocol: Schema.Literal(1),
+    transcript: Schema.Unknown,
+  }),
+  Schema.Struct({ type: Schema.Literal("segment"), segment: Schema.Unknown }),
+  Schema.Struct({
+    type: Schema.Literal("done"),
+    count: Schema.Number,
+    warnings: Schema.Array(Schema.String),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("error"),
+    error: Schema.Struct({
+      code: Schema.Union([
+        Schema.Literal("WORKER_ERROR"),
+        Schema.Literal("MODEL_MISSING"),
+        Schema.Literal("MEDIA_ERROR"),
+      ]),
+      message: Schema.String,
+    }),
   }),
 ]);
+
+const MAX_WORKER_LINE_BYTES = 1024 * 1024;
 
 export type TranscriptionRequest = {
   readonly inputPath: string;
@@ -24,17 +42,32 @@ export type TranscriptionRequest = {
   readonly timeoutMs: number;
   readonly signal: AbortSignal;
   readonly quiet: boolean;
+  readonly onSegment?: (segment: TranscriptSegment) => void | Promise<void>;
 };
 
 type WorkerInput = {
-  readonly audio_path: string;
   readonly source_path: string;
   readonly source_duration: number;
   readonly source_offset: number;
   readonly selected_duration: number;
   readonly language: string | null;
   readonly manifest_path: string;
+  readonly ffmpeg_path: string;
 };
+
+type WorkerStreamState =
+  | { readonly kind: "header" }
+  | {
+      readonly kind: "segments";
+      readonly header: Transcript;
+      readonly segments: TranscriptSegment[];
+    }
+  | {
+      readonly kind: "complete";
+      readonly header: Transcript;
+      readonly segments: ReadonlyArray<TranscriptSegment>;
+      readonly warnings: ReadonlyArray<string>;
+    };
 
 type TranscriberShape = {
   readonly run: (request: TranscriptionRequest) => Effect.Effect<Transcript, AppError>;
@@ -55,6 +88,166 @@ function failure(cause: unknown): AppError {
 
 function tail(text: string, limit = 2500): string {
   return text.length <= limit ? text.trim() : text.slice(-limit).trim();
+}
+
+class WorkerStream {
+  private buffer = "";
+  private state: WorkerStreamState = { kind: "header" };
+
+  constructor(
+    private readonly expected: {
+      readonly sourcePath: string;
+      readonly sourceDuration: number;
+      readonly sourceOffset: number;
+      readonly selectedDuration: number;
+      readonly asrModel: string;
+      readonly diarizationModel: string;
+      readonly alignmentModel: string;
+    },
+    private readonly onSegment?: (segment: TranscriptSegment) => void | Promise<void>,
+  ) {}
+
+  async push(chunk: string): Promise<void> {
+    this.buffer += chunk;
+    let newline = this.buffer.indexOf("\n");
+    while (newline >= 0) {
+      let line = this.buffer.slice(0, newline);
+      this.buffer = this.buffer.slice(newline + 1);
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.length === 0) throw appError("WorkerError", "MLX worker emitted an empty record");
+      if (Buffer.byteLength(line, "utf8") > MAX_WORKER_LINE_BYTES) {
+        throw appError("WorkerError", "MLX worker record exceeds the 1 MiB limit");
+      }
+      await this.accept(line);
+      newline = this.buffer.indexOf("\n");
+    }
+    if (Buffer.byteLength(this.buffer, "utf8") > MAX_WORKER_LINE_BYTES) {
+      throw appError("WorkerError", "MLX worker record exceeds the 1 MiB limit");
+    }
+  }
+
+  finish(): Transcript {
+    if (this.buffer.length > 0) {
+      throw appError("WorkerError", "MLX worker ended with a truncated record");
+    }
+    if (this.state.kind === "header") {
+      throw appError("WorkerError", "MLX worker ended before sending a header");
+    }
+    if (this.state.kind === "segments") {
+      throw appError("WorkerError", "MLX worker ended before sending a done record");
+    }
+    try {
+      return decodeTranscript({
+        ...this.state.header,
+        segments: this.state.segments,
+        warnings: this.state.warnings,
+      });
+    } catch (cause) {
+      throw appError(
+        "TranscriptError",
+        `MLX worker returned an invalid transcript: ${String(cause)}`,
+      );
+    }
+  }
+
+  private async accept(line: string): Promise<void> {
+    let record: Schema.Schema.Type<typeof WorkerRecordSchema>;
+    try {
+      record = Schema.decodeUnknownSync(WorkerRecordSchema)(JSON.parse(line));
+    } catch {
+      throw appError("WorkerError", "MLX worker emitted an invalid NDJSON record");
+    }
+    if (this.state.kind === "complete") {
+      throw appError("WorkerError", "MLX worker emitted a record after done");
+    }
+    if (record.type === "error") {
+      const tag =
+        record.error.code === "MODEL_MISSING"
+          ? "ModelError"
+          : record.error.code === "MEDIA_ERROR"
+            ? "MediaError"
+            : "WorkerError";
+      throw appError(tag, record.error.message);
+    }
+    if (record.type === "header") {
+      if (this.state.kind !== "header") {
+        throw appError("WorkerError", "MLX worker emitted more than one header");
+      }
+      let header: Transcript;
+      try {
+        header = decodeTranscript(record.transcript);
+      } catch (cause) {
+        throw appError(
+          "TranscriptError",
+          `MLX worker returned an invalid header: ${String(cause)}`,
+        );
+      }
+      const expectedSelectionEnd = Math.min(
+        this.expected.sourceDuration,
+        this.expected.sourceOffset + this.expected.selectedDuration,
+      );
+      if (
+        header.timing !== "forced-aligned" ||
+        header.segments.length !== 0 ||
+        header.warnings.length !== 0 ||
+        header.source.path !== this.expected.sourcePath ||
+        header.source.duration !== this.expected.sourceDuration ||
+        header.source.selection.start !== this.expected.sourceOffset ||
+        header.source.selection.end !== expectedSelectionEnd ||
+        header.models.asr !== this.expected.asrModel ||
+        header.models.diarization !== this.expected.diarizationModel ||
+        header.models.alignment !== this.expected.alignmentModel
+      ) {
+        throw appError(
+          "TranscriptError",
+          "worker header does not match the selected source or installed model manifest",
+        );
+      }
+      this.state = { kind: "segments", header, segments: [] };
+      return;
+    }
+    if (record.type === "segment") {
+      if (this.state.kind !== "segments") {
+        throw appError("WorkerError", "MLX worker emitted a segment before its header");
+      }
+      let segment: TranscriptSegment;
+      try {
+        const decoded = decodeTranscript({
+          ...this.state.header,
+          segments: [record.segment],
+        }).segments[0];
+        if (decoded === undefined) throw new Error("segment was lost during validation");
+        segment = decoded;
+      } catch (cause) {
+        throw appError(
+          "TranscriptError",
+          `MLX worker returned an invalid segment: ${String(cause)}`,
+        );
+      }
+      const previous = this.state.segments[this.state.segments.length - 1];
+      if (previous !== undefined && segment.start < previous.end) {
+        throw appError("TranscriptError", "worker segments must be ordered and non-overlapping");
+      }
+      await this.onSegment?.(segment);
+      this.state.segments.push(segment);
+      return;
+    }
+    if (this.state.kind !== "segments") {
+      throw appError("WorkerError", "MLX worker emitted done before its header");
+    }
+    if (!Number.isSafeInteger(record.count) || record.count < 0) {
+      throw appError("WorkerError", "MLX worker done count must be a non-negative integer");
+    }
+    if (record.count !== this.state.segments.length) {
+      throw appError("WorkerError", "MLX worker done count does not match the streamed segments");
+    }
+    this.state = {
+      kind: "complete",
+      header: this.state.header,
+      segments: this.state.segments,
+      warnings: record.warnings,
+    };
+  }
 }
 
 async function requirePath(path: string, label: string): Promise<void> {
@@ -83,11 +276,14 @@ async function runTranscription(request: TranscriptionRequest): Promise<Transcri
     throw appError("InputError", "--timeout must be a finite number greater than 0");
   }
 
-  const sourcePath = resolve(request.inputPath);
-  const sourceInfo = await stat(sourcePath).catch(() => undefined);
+  const resolvedInputPath = resolve(request.inputPath);
+  const sourceInfo = await stat(resolvedInputPath).catch(() => undefined);
   if (sourceInfo === undefined || !sourceInfo.isFile()) {
     throw appError("InputError", `audio file not found: ${request.inputPath}`);
   }
+  const sourcePath = await realpath(resolvedInputPath).catch(() => {
+    throw appError("InputError", `audio file not found: ${request.inputPath}`);
+  });
 
   const projectRoot = getRuntimeDirectory();
   const dataDirectory = getDataDirectory();
@@ -174,109 +370,47 @@ async function runTranscription(request: TranscriptionRequest): Promise<Transcri
     throw appError("InputError", "--duration extends past the end of the source audio");
   }
 
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "transcribe-"));
-  const audioPath = join(temporaryDirectory, "source.wav");
-  try {
-    const ffmpegArgs = ["-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-i", sourcePath];
-    if (request.startSeconds > 0) ffmpegArgs.push("-ss", String(request.startSeconds));
-    if (request.durationSeconds !== undefined) ffmpegArgs.push("-t", String(selectedDuration));
-    ffmpegArgs.push(
-      "-map",
-      "0:a:0",
-      "-vn",
-      "-sn",
-      "-dn",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-c:a",
-      "pcm_s16le",
-      "-f",
-      "wav",
-      audioPath,
+  const workerPath =
+    process.env["NODE_ENV"] === "test" && process.env["TRANSCRIBE_TEST_WORKER"] !== undefined
+      ? resolve(process.env["TRANSCRIBE_TEST_WORKER"])
+      : join(projectRoot, "python", "worker.py");
+  await requirePath(workerPath, "the MLX worker");
+  const workerInput: WorkerInput = {
+    source_path: sourcePath,
+    source_duration: sourceDuration,
+    source_offset: request.startSeconds,
+    selected_duration: selectedDuration,
+    language: request.language ?? null,
+    manifest_path: manifestPath,
+    ffmpeg_path: resolve(ffmpeg),
+  };
+  const stream = new WorkerStream(
+    {
+      sourcePath,
+      sourceDuration,
+      sourceOffset: request.startSeconds,
+      selectedDuration,
+      asrModel: `${lock.models.asr.id}@${lock.models.asr.revision}`,
+      diarizationModel: `${lock.models.diarization.id}@${lock.models.diarization.revision}`,
+      alignmentModel: `${lock.models.alignment.id}@${lock.models.alignment.revision}`,
+    },
+    request.onSegment,
+  );
+  const worker = await runProcess(pythonPath, [workerPath], {
+    stdin: `${JSON.stringify(workerInput)}\n`,
+    signal: timedSignal,
+    env: processEnvironment,
+    captureStdout: false,
+    onStdout: (chunk) => stream.push(chunk),
+    ...stderrOption,
+  });
+  if (worker.exitCode !== 0) {
+    throw appError(
+      "WorkerError",
+      `MLX worker failed: ${tail(worker.stderr) || `exit code ${worker.exitCode}`}`,
     );
-    const conversion = await runProcess(ffmpeg, ffmpegArgs, {
-      signal: timedSignal,
-      ...stderrOption,
-    });
-    if (conversion.exitCode !== 0) {
-      throw appError(
-        "MediaError",
-        `could not decode audio: ${tail(conversion.stderr) || sourcePath}`,
-      );
-    }
-
-    const workerPath =
-      process.env["NODE_ENV"] === "test" && process.env["TRANSCRIBE_TEST_WORKER"] !== undefined
-        ? resolve(process.env["TRANSCRIBE_TEST_WORKER"])
-        : join(projectRoot, "python", "worker.py");
-    await requirePath(workerPath, "the MLX worker");
-    const workerInput: WorkerInput = {
-      audio_path: audioPath,
-      source_path: sourcePath,
-      source_duration: sourceDuration,
-      source_offset: request.startSeconds,
-      selected_duration: selectedDuration,
-      language: request.language ?? null,
-      manifest_path: manifestPath,
-    };
-    const worker = await runProcess(pythonPath, [workerPath], {
-      stdin: `${JSON.stringify(workerInput)}\n`,
-      signal: timedSignal,
-      env: processEnvironment,
-      ...stderrOption,
-    });
-    let response: Schema.Schema.Type<typeof WorkerResponseSchema>;
-    try {
-      response = Schema.decodeUnknownSync(WorkerResponseSchema)(JSON.parse(worker.stdout));
-    } catch (cause) {
-      if (worker.exitCode !== 0) {
-        throw appError(
-          "WorkerError",
-          `MLX worker failed: ${tail(worker.stderr) || `exit code ${worker.exitCode}`}`,
-        );
-      }
-      throw appError("WorkerError", `MLX worker returned an invalid response: ${String(cause)}`);
-    }
-    if (!response.ok) {
-      const tag = response.error.code === "MODEL_MISSING" ? "ModelError" : "WorkerError";
-      throw appError(tag, response.error.message);
-    }
-    if (worker.exitCode !== 0) {
-      throw appError(
-        "WorkerError",
-        `MLX worker failed: ${tail(worker.stderr) || `exit code ${worker.exitCode}`}`,
-      );
-    }
-
-    let transcript: Transcript;
-    try {
-      transcript = decodeTranscript(response.transcript);
-    } catch (cause) {
-      throw appError(
-        "TranscriptError",
-        `MLX worker returned an invalid transcript: ${String(cause)}`,
-      );
-    }
-    const expectedAsr = `${lock.models.asr.id}@${lock.models.asr.revision}`;
-    const expectedDiarization = `${lock.models.diarization.id}@${lock.models.diarization.revision}`;
-    if (
-      transcript.models.asr !== expectedAsr ||
-      transcript.models.diarization !== expectedDiarization ||
-      transcript.timing !== "forced-aligned" ||
-      transcript.models.alignment !==
-        `${lock.models.alignment.id}@${lock.models.alignment.revision}`
-    ) {
-      throw appError(
-        "TranscriptError",
-        "worker model revisions do not match the installed model manifest",
-      );
-    }
-    return transcript;
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
   }
+  return stream.finish();
 }
 
 export function getDataDirectory(): string {
